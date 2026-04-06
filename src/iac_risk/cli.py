@@ -109,11 +109,9 @@ def _require_configured() -> dict:
     _load_env()
     cfg = _resolve_config()
 
-    # Default server to localhost if not configured
-    # (Docker compose runs on port from .env or 8000)
+    # Default server to localhost:8000 if not configured
     if not cfg.get("server"):
-        port = os.environ.get("PORT", "8000")
-        cfg["server"] = f"http://localhost:{port}"
+        cfg["server"] = "http://localhost:8000"
 
     return cfg
 
