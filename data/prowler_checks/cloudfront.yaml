@@ -1,0 +1,194 @@
+- check_id: cloudfront_https_only
+  title: CloudFront HTTPS Only
+  description: Ensure CloudFront distribution enforces HTTPS-only viewer protocol
+  severity: CRITICAL
+  resource_types:
+  - aws_cloudfront_distribution
+  detection_logic:
+    field_path: default_cache_behavior.0.viewer_protocol_policy
+    operator: equals
+    expected_value: https-only
+  remediation: Set viewer_protocol_policy to https-only in the default cache behavior
+  compliance_mappings:
+    PCI_DSS:
+    - '4.1'
+    - 4.1.1
+    ISO_27001:
+    - A.10.1.1
+    - A.13.1.1
+    ISO_27701:
+    - 6.7.1.1
+    SOC_2:
+    - CC6.1
+    - CC6.7
+    GDPR:
+    - Art.32
+    - Art.25
+    ISMS_P:
+    - 2.5.1
+    - 2.7.1
+  attack_scenarios:
+  - technique: CDN Traffic Interception
+    description: >
+      An attacker intercepts unencrypted HTTP traffic between users and the
+      CloudFront distribution. They capture authentication tokens, session
+      cookies, and sensitive data being served through the CDN in plaintext.
+    mitre_tactic: "Credential Access (TA0006)"
+    impact: >
+      Session hijacking, credential theft, exposure of sensitive content
+      served through the CDN, regulatory violations.
+    threat_source: ADVERSARIAL
+- check_id: cloudfront_waf
+  title: CloudFront WAF Web ACL
+  description: Ensure CloudFront distribution has a WAF web ACL associated
+  severity: HIGH
+  resource_types:
+  - aws_cloudfront_distribution
+  detection_logic:
+    field_path: web_acl_id
+    operator: exists
+  remediation: Associate an AWS WAF web ACL with the CloudFront distribution
+  compliance_mappings:
+    PCI_DSS:
+    - 6.5.1
+    - '6.6'
+    ISO_27001:
+    - A.13.1.1
+    - A.14.1.2
+    ISO_27701:
+    - 6.10.1.1
+    SOC_2:
+    - CC6.6
+    - CC7.2
+    GDPR:
+    - Art.32
+    ISMS_P:
+    - 2.8.1
+    - 2.10.1
+  attack_scenarios:
+  - technique: Origin Server Exploitation via CloudFront
+    description: >
+      Without WAF, malicious requests pass through CloudFront directly to
+      the origin server. An attacker exploits OWASP Top 10 vulnerabilities
+      including SQL injection and XSS without any edge-level filtering or
+      rate limiting.
+    mitre_tactic: "Initial Access (TA0001)"
+    impact: >
+      Unfiltered malicious traffic reaching origin, successful exploitation
+      of web vulnerabilities, potential data breach.
+    threat_source: ADVERSARIAL
+- check_id: cloudfront_logging
+  title: CloudFront Access Logging
+  description: Ensure CloudFront distribution has access logging enabled
+  severity: MODERATE
+  resource_types:
+  - aws_cloudfront_distribution
+  detection_logic:
+    field_path: logging_config.0.bucket
+    operator: exists
+  remediation: Enable logging_config with an S3 bucket for CloudFront access logs
+  compliance_mappings:
+    PCI_DSS:
+    - '10.2'
+    - '10.3'
+    ISO_27001:
+    - A.12.4.1
+    ISO_27701:
+    - 6.9.4.1
+    SOC_2:
+    - CC7.2
+    GDPR:
+    - Art.30
+    - Art.33
+    ISMS_P:
+    - 2.9.1
+    - 2.9.3
+  attack_scenarios:
+  - technique: Undetected CDN Abuse and Content Scraping
+    description: >
+      Without access logging, an attacker performs large-scale content
+      scraping, DDoS amplification, or cache poisoning attacks through
+      CloudFront without leaving audit trails. The organization cannot
+      identify attack patterns or abusive clients.
+    mitre_tactic: "Defense Evasion (TA0005)"
+    impact: >
+      Inability to detect CDN abuse, no forensic evidence of attacks,
+      uncontrolled bandwidth costs from scraping.
+    threat_source: ADVERSARIAL
+- check_id: cloudfront_geo_restriction
+  title: CloudFront Geo Restriction
+  description: Ensure CloudFront distribution has geo restriction configured
+  severity: LOW
+  resource_types:
+  - aws_cloudfront_distribution
+  detection_logic:
+    field_path: restrictions.0.geo_restriction.0.restriction_type
+    operator: not_equals
+    expected_value: none
+  remediation: Configure geo_restriction to whitelist or blacklist specific countries
+  compliance_mappings:
+    PCI_DSS:
+    - 1.3.1
+    ISO_27001:
+    - A.13.1.1
+    ISO_27701:
+    - 6.10.1.1
+    SOC_2:
+    - CC6.6
+    GDPR:
+    - Art.44
+    - Art.49
+    ISMS_P:
+    - 2.8.1
+  attack_scenarios:
+  - technique: Geo-Based Attack Evasion
+    description: >
+      Without geo restriction, attackers from any country can access the
+      distribution. This increases the attack surface and makes it harder
+      to block malicious traffic originating from regions where the service
+      has no legitimate users.
+    mitre_tactic: "Initial Access (TA0001)"
+    impact: >
+      Expanded attack surface, difficulty blocking region-specific threats,
+      potential compliance violations for data residency requirements.
+    threat_source: ADVERSARIAL
+- check_id: cloudfront_origin_access_identity
+  title: CloudFront Origin Access Identity
+  description: Ensure CloudFront uses OAI or OAC for S3 origin access
+  severity: HIGH
+  resource_types:
+  - aws_cloudfront_distribution
+  detection_logic:
+    field_path: origin.0.s3_origin_config.0.origin_access_identity
+    operator: exists
+  remediation: Configure an Origin Access Identity or Origin Access Control for S3 origins
+  compliance_mappings:
+    PCI_DSS:
+    - 1.3.1
+    - 7.1.1
+    ISO_27001:
+    - A.9.4.1
+    - A.13.1.1
+    ISO_27701:
+    - 6.6.2.1
+    SOC_2:
+    - CC6.1
+    - CC6.6
+    GDPR:
+    - Art.25
+    - Art.32
+    ISMS_P:
+    - 2.6.1
+    - 2.8.2
+  attack_scenarios:
+  - technique: Direct S3 Origin Bypass
+    description: >
+      Without OAI/OAC, the S3 bucket must be publicly accessible for
+      CloudFront to serve content. An attacker bypasses CloudFront entirely
+      and accesses the S3 bucket directly, circumventing WAF rules, geo
+      restrictions, and signed URL protections.
+    mitre_tactic: "Defense Evasion (TA0005)"
+    impact: >
+      Bypass of all CloudFront security controls, direct unauthorized
+      access to S3 origin content, circumvention of access restrictions.
+    threat_source: ADVERSARIAL

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Pro-Prowler{% endblock %}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@400;500;600;700&display=swap');
+:root{
+  --bg:#080b12;--surface:#0d1117;--surface2:#131923;--border:#1b2838;--border-glow:#00ff8830;
+  --text:#e0e6ed;--muted:#5a6a7a;--accent:#00ff88;--accent-dim:#00cc6a;--accent-bg:rgba(0,255,136,.06);
+  --fail:#ff3355;--warn:#ffaa00;--info:#00aaff;
+  --critical:#ff3355;--high:#ff6633;--moderate:#ffaa00;--low:#00aaff;
+  --pass:#00ff88;
+  --grade-a:#00ff88;--grade-b:#66ff99;--grade-c:#ffaa00;--grade-d:#ff6633;--grade-f:#ff3355;
+  --glow:0 0 20px rgba(0,255,136,.15);--glow-strong:0 0 30px rgba(0,255,136,.25)
+}
+*{margin:0;padding:0;box-sizing:border-box}
+input[type="date"]{color-scheme:dark}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);line-height:1.6;background-image:radial-gradient(ellipse at 50% 0%,rgba(0,255,136,.03) 0%,transparent 60%)}
+a{color:var(--accent);text-decoration:none;transition:all .2s}
+a:hover{text-decoration:none;text-shadow:0 0 8px var(--accent)}
+h1,h2,h3,h4{font-family:'Orbitron',sans-serif;letter-spacing:.02em}
+.container{max-width:1280px;margin:0 auto;padding:24px}
+
+/* NAV */
+header{display:flex;justify-content:space-between;align-items:center;padding:16px 0;border-bottom:1px solid var(--border);margin-bottom:28px;position:relative}
+header::after{content:'';position:absolute;bottom:-1px;left:0;width:100%;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.5}
+header h1{font-family:'Orbitron',sans-serif;font-size:1.1rem;font-weight:700;letter-spacing:.08em}
+header h1 a{color:var(--accent) !important;text-shadow:0 0 12px rgba(0,255,136,.4)}
+header nav{display:flex;gap:4px}
+header nav a{padding:6px 14px;border-radius:6px;color:var(--muted);font-size:.85rem;font-weight:500;transition:all .2s;border:1px solid transparent}
+header nav a:hover{color:var(--accent);border-color:var(--border);background:var(--accent-bg)}
+
+/* CARDS */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin:24px 0}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;transition:all .2s;position:relative;overflow:hidden}
+.card:hover{border-color:var(--accent);box-shadow:var(--glow)}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent-dim),transparent);opacity:0;transition:opacity .2s}
+.card:hover::before{opacity:1}
+.card-label{font-size:.7rem;text-transform:uppercase;color:var(--muted);letter-spacing:.1em;font-family:'Orbitron',sans-serif}
+.card-value{font-size:2rem;font-weight:700;margin-top:4px;font-family:'Orbitron',sans-serif}
+
+/* BADGES */
+.severity-badge{display:inline-block;padding:2px 10px;border-radius:4px;font-size:.75rem;font-weight:600;letter-spacing:.03em;border:1px solid}
+.severity-CRITICAL{background:rgba(255,51,85,.1);color:var(--critical);border-color:rgba(255,51,85,.3)}
+.severity-HIGH{background:rgba(255,102,51,.1);color:var(--high);border-color:rgba(255,102,51,.3)}
+.severity-MODERATE{background:rgba(255,170,0,.1);color:var(--moderate);border-color:rgba(255,170,0,.3)}
+.severity-LOW{background:rgba(0,170,255,.1);color:var(--low);border-color:rgba(0,170,255,.3)}
+.severity-INFORMATIONAL{background:rgba(90,106,122,.1);color:var(--muted);border-color:rgba(90,106,122,.3)}
+.delta-pos{color:var(--pass)}.delta-neg{color:var(--fail)}.delta-zero{color:var(--muted)}
+
+/* TABLES */
+table{width:100%;border-collapse:collapse;margin-top:16px}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--border)}
+th{font-size:.7rem;text-transform:uppercase;color:var(--accent-dim);letter-spacing:.08em;font-family:'Orbitron',sans-serif}
+tr:hover{background:var(--accent-bg)}
+
+/* BARS */
+.bar{height:6px;border-radius:3px;background:var(--border);overflow:hidden;margin-top:8px}
+.bar-fill{height:100%;border-radius:3px;transition:width .3s}
+.bar-fill.pass{background:linear-gradient(90deg,var(--accent-dim),var(--accent))}
+.bar-fill.warn{background:linear-gradient(90deg,#cc8800,var(--warn))}
+.bar-fill.fail{background:linear-gradient(90deg,#cc2244,var(--fail))}
+
+/* STATUS */
+.status-PASS{color:var(--pass)}.status-FAIL{color:var(--fail)}.status-UNMAPPED{color:var(--muted)}
+
+/* GRADE */
+.grade-circle{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:900;font-family:'Orbitron',sans-serif;position:relative}
+.grade-circle::after{content:'';position:absolute;inset:-3px;border-radius:50%;border:1px solid;border-color:inherit;opacity:.3}
+
+/* TAGS */
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.75rem;margin-right:4px;border:1px solid transparent}
+.tag-new{background:rgba(255,51,85,.1);color:var(--fail);border-color:rgba(255,51,85,.2)}
+.tag-resolved{background:rgba(0,255,136,.1);color:var(--pass);border-color:rgba(0,255,136,.2)}
+.tag-persistent{background:rgba(90,106,122,.1);color:var(--muted);border-color:rgba(90,106,122,.2)}
+
+/* HINTS */
+.hint{display:inline-block;width:14px;height:14px;border-radius:50%;background:var(--border);color:var(--muted);font-size:10px;text-align:center;line-height:14px;cursor:help;margin-left:4px;position:relative}
+.hint:hover::after{content:attr(data-tip);position:absolute;bottom:120%;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--accent);color:var(--text);padding:6px 10px;border-radius:6px;font-size:.8rem;white-space:nowrap;z-index:10;font-weight:400;text-transform:none;letter-spacing:0;box-shadow:var(--glow)}
+
+/* CTX BADGES */
+.ctx-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:600;margin-right:4px}
+.ctx-VERY_HIGH,.ctx-HIGH{background:rgba(255,51,85,.1);color:var(--fail);border:1px solid rgba(255,51,85,.2)}
+.ctx-MODERATE{background:rgba(255,170,0,.1);color:var(--moderate);border:1px solid rgba(255,170,0,.2)}
+.ctx-LOW,.ctx-VERY_LOW{background:rgba(0,170,255,.1);color:var(--info);border:1px solid rgba(0,170,255,.2)}
+
+/* FOOTER */
+footer{text-align:center;padding:24px 0;color:var(--muted);font-size:.8rem;border-top:1px solid var(--border);margin-top:32px;position:relative}
+footer::before{content:'';position:absolute;top:-1px;left:0;width:100%;height:1px;background:linear-gradient(90deg,transparent,var(--accent-dim),transparent);opacity:.3}
+.empty{text-align:center;padding:48px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+<h1><a href="/dashboard">&#9632; PRO-PROWLER</a></h1>
+<nav>
+<a href="/dashboard">Dashboard</a>
+<a href="/governance">Governance</a>
+<a href="/settings">Settings</a>
+<a href="/docs">API Docs</a>
+</nav>
+</header>
+{% block content %}{% endblock %}
+<footer>
+<span style="font-family:'Orbitron',sans-serif;font-size:.7rem;letter-spacing:.1em">PRO-PROWLER ASSESSMENT</span>
+<span style="margin:0 8px">|</span>
+v0.1.0 | NIST SP 800-30
+</footer>
+</div>
+{% block scripts %}{% endblock %}
+</body>
+</html>

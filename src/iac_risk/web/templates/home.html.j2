@@ -1,0 +1,550 @@
+{% extends "base.html.j2" %}
+{% block title %}Projects — Pro-Prowler{% endblock %}
+{% block content %}
+<style>
+.new-project-form{display:none;margin-bottom:24px;padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:8px}
+.ctx-row{display:flex;gap:8px;margin-bottom:8px;align-items:center}
+.ctx-row input{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:.85rem}
+.ctx-row .ctx-key{width:180px}
+.ctx-row .ctx-val{flex:1}
+.ctx-remove{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:0 4px}
+.ctx-remove:hover{color:var(--fail)}
+.new-btn{padding:6px 16px;border-radius:6px;border:none;background:var(--info);color:#fff;cursor:pointer;font-size:.85rem;font-weight:600}
+.new-btn:hover{opacity:.9}
+</style>
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+<h2 style="font-size:1.1rem">Projects</h2>
+<button class="new-btn" onclick="toggleNewProject()">+ New Project</button>
+</div>
+
+{# New Project Form #}
+<div id="new-project-form" class="new-project-form">
+<h3 style="font-size:1rem;margin-bottom:12px">Create New Project</h3>
+
+<div style="margin-bottom:16px">
+<label style="font-size:.85rem;color:var(--muted);display:block;margin-bottom:4px">IaC Repository</label>
+<div style="display:flex;gap:8px;align-items:center">
+<input id="new-repo" type="text" placeholder="e.g., org/infrastructure" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:.9rem" onblur="fetchBranches()">
+<button onclick="fetchBranches()" style="padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--accent);cursor:pointer;font-size:.85rem;white-space:nowrap">Fetch Branches</button>
+</div>
+<div id="branch-status" style="font-size:.8rem;margin-top:4px"></div>
+</div>
+
+<div style="margin-bottom:16px">
+<label style="font-size:.85rem;color:var(--muted);display:block;margin-bottom:8px">Context Sources <span style="font-size:.8rem">(help AI understand your business)</span></label>
+<div id="ctx-sources">
+<div class="ctx-row">
+<input class="ctx-key" placeholder="e.g., App Repository" value="App Repository">
+<input class="ctx-val" placeholder="e.g., org/payment-api">
+<button class="ctx-remove" onclick="this.parentElement.remove()">&#10005;</button>
+</div>
+<div class="ctx-row">
+<input class="ctx-key" placeholder="e.g., API Documentation" value="">
+<input class="ctx-val" placeholder="e.g., https://docs.company.com/api">
+<button class="ctx-remove" onclick="this.parentElement.remove()">&#10005;</button>
+</div>
+<div class="ctx-row">
+<input class="ctx-key" placeholder="e.g., Service Purpose" value="">
+<input class="ctx-val" placeholder="e.g., Payment processing service for EU customers">
+<button class="ctx-remove" onclick="this.parentElement.remove()">&#10005;</button>
+</div>
+</div>
+<button onclick="addCtxRow()" style="margin-top:4px;padding:4px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:.85rem">+ Add source</button>
+</div>
+
+<div style="margin-bottom:16px">
+<label style="font-size:.85rem;color:var(--muted);display:block;margin-bottom:4px">Default Branch</label>
+<select id="new-default-branch" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:.9rem">
+<option value="main">main</option>
+</select>
+<span style="font-size:.8rem;color:var(--muted);margin-left:8px">Fetched from repository — select the branch to scan</span>
+</div>
+
+<div style="margin-bottom:16px">
+<label style="font-size:.85rem;color:var(--muted);display:block;margin-bottom:4px">Terraform Directory</label>
+<input id="new-terraform-dir" type="text" value="" placeholder="Auto-detected from repository" style="width:300px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:.9rem">
+<span style="font-size:.8rem;color:var(--muted);margin-left:8px">Path to .tf files (auto-detected on Fetch Branches)</span>
+</div>
+
+<div style="margin-bottom:16px">
+<label style="font-size:.85rem;color:var(--muted);display:block;margin-bottom:4px">Pro-Prowler Server URL</label>
+<input id="new-server-url" type="text" value="" placeholder="e.g., http://10.0.1.50:8000 or https://prowler.company.com" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:.9rem">
+<span style="font-size:.8rem;color:var(--muted)">CI runners must reach this URL. Auto-filled from current page if empty.</span>
+</div>
+
+<div style="display:flex;gap:8px;align-items:center">
+<button onclick="createProject()" id="create-project-btn" class="new-btn">Create Project</button>
+<button onclick="toggleNewProject()" style="padding:6px 16px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:.85rem">Cancel</button>
+<span id="create-project-status" style="font-size:.85rem"></span>
+</div>
+</div>
+
+{% if not projects %}
+<div class="empty">
+<p>No projects yet. Click <strong>+ New Project</strong> to get started.</p>
+</div>
+{% else %}
+
+<table id="projects-table">
+<thead>
+<tr><th>Project</th><th>Branch</th><th>Latest Score</th><th>Snapshots</th><th>Last Updated</th><th></th></tr>
+</thead>
+<tbody>
+{% for p in projects %}
+<tr class="project-row" data-project="{{ p.id }}" style="cursor:pointer" onclick="toggleProject('{{ p.id }}')">
+<td><strong>{{ p.repository }}</strong></td>
+<td><code style="font-size:.8rem;color:var(--accent);background:var(--accent-bg);padding:2px 6px;border-radius:3px">{{ p.default_branch }}</code></td>
+<td>{% if p.latest_score is not none %}{{ p.latest_score }}/100{% else %}-{% endif %}</td>
+<td>{{ p.snapshot_count }}</td>
+<td style="font-size:.85rem;color:var(--muted)">{{ p.updated_at[:19] }}</td>
+<td style="white-space:nowrap">
+<button onclick="event.stopPropagation();editProject('{{ p.id }}')" style="padding:3px 8px;border-radius:4px;border:1px solid var(--accent);background:var(--accent-bg);color:var(--accent);cursor:pointer;font-size:.8rem;margin-right:4px">&#9998;</button>
+<button onclick="event.stopPropagation();deleteProject('{{ p.id }}','{{ p.repository }}')" style="padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--fail);cursor:pointer;font-size:.8rem">&#10005;</button>
+</td>
+</tr>
+<tr class="snapshot-rows" id="snapshots-{{ p.id }}" style="display:none">
+<td colspan="6" style="padding:0">
+<div style="display:flex;gap:0;margin-bottom:8px;border-bottom:1px solid var(--border)">
+<button class="layout-btn active" onclick="showProjectTab('{{ p.id }}','snapshots')" id="tab-snapshots-{{ p.id }}" style="padding:6px 14px;border:none;border-bottom:2px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;font-size:.85rem">Snapshots</button>
+<button class="layout-btn" onclick="showProjectTab('{{ p.id }}','ci')" id="tab-ci-{{ p.id }}" style="padding:6px 14px;border:none;border-bottom:2px solid transparent;background:transparent;color:var(--muted);cursor:pointer;font-size:.85rem">CI Integration</button>
+</div>
+<div class="snapshot-list" id="list-{{ p.id }}">
+<div style="padding:12px;color:var(--muted);font-size:.85rem">Loading...</div>
+</div>
+<div id="ci-{{ p.id }}" style="display:none;padding:12px">
+<div style="display:flex;gap:0;margin-bottom:12px">
+<button class="ci-mode-btn active" id="ci-push-tab-{{ p.id }}" onclick="switchCIMode('{{ p.id }}','push')" style="padding:6px 16px;border:1px solid var(--border);border-radius:6px 0 0 6px;background:var(--accent);color:#000;cursor:pointer;font-size:.85rem;font-weight:600">Push (Snippet)</button>
+<button class="ci-mode-btn" id="ci-pull-tab-{{ p.id }}" onclick="switchCIMode('{{ p.id }}','pull')" style="padding:6px 16px;border:1px solid var(--border);border-left:none;border-radius:0 6px 6px 0;background:var(--surface);color:var(--muted);cursor:pointer;font-size:.85rem">Pull (Webhook)</button>
+<button onclick="syncProject('{{ p.id }}')" id="sync-btn-{{ p.id }}" style="margin-left:auto;padding:4px 14px;border-radius:6px;border:1px solid var(--info);background:transparent;color:var(--info);cursor:pointer;font-size:.85rem" title="Fetch latest workflow run and assess">Sync Now</button>
+<span id="ci-status-{{ p.id }}" style="font-size:.85rem;margin-left:8px;align-self:center"></span>
+</div>
+
+<div id="ci-push-{{ p.id }}">
+<p style="font-size:.85rem;color:var(--muted);margin-bottom:8px">Paste these steps into your existing GitHub Actions workflow, after your <code>terraform plan</code> step. Your CI sends the plan directly to Pro-Prowler.</p>
+<div style="position:relative">
+<button onclick="copySnippet('{{ p.id }}','push')" style="position:absolute;top:6px;right:6px;padding:3px 10px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer;font-size:.75rem;z-index:1">Copy</button>
+<pre id="push-snippet-{{ p.id }}" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;font-size:.8rem;font-family:'Courier New',monospace;color:var(--text);line-height:1.5;overflow-x:auto;max-height:350px;overflow-y:auto;white-space:pre;margin:0">Loading...</pre>
+</div>
+</div>
+
+<div id="ci-pull-{{ p.id }}" style="display:none">
+<p style="font-size:.85rem;color:var(--muted);margin-bottom:8px">Add these lines to your workflow to upload the plan as an artifact. Pro-Prowler will automatically pick it up via webhook when the workflow completes.</p>
+<div style="position:relative">
+<button onclick="copySnippet('{{ p.id }}','pull')" style="position:absolute;top:6px;right:6px;padding:3px 10px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer;font-size:.75rem;z-index:1">Copy</button>
+<pre id="pull-snippet-{{ p.id }}" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;font-size:.8rem;font-family:'Courier New',monospace;color:var(--text);line-height:1.5;overflow-x:auto;max-height:200px;overflow-y:auto;white-space:pre;margin:0">Loading...</pre>
+</div>
+<div style="margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface)">
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+<span style="font-size:.85rem;font-weight:600">Webhook</span>
+<span id="webhook-status-{{ p.id }}" style="font-size:.8rem;padding:2px 8px;border-radius:4px"></span>
+</div>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+<label style="font-size:.8rem;color:var(--muted)">Artifact name:</label>
+<input type="text" id="artifact-name-{{ p.id }}" value="{{ p.get('artifact_name','terraform-plan') if p is mapping else 'terraform-plan' }}" style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);font-size:.8rem;width:160px" placeholder="terraform-plan">
+<label style="font-size:.8rem;color:var(--muted);margin-left:8px">Workflow filter:</label>
+<input type="text" id="workflow-filter-{{ p.id }}" value="" style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);font-size:.8rem;width:160px" placeholder="(optional)">
+<button onclick="saveWebhookSettings('{{ p.id }}')" style="padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;font-size:.8rem">Save</button>
+</div>
+<div style="margin-top:8px;display:flex;gap:8px">
+<button onclick="registerWebhook('{{ p.id }}')" id="register-btn-{{ p.id }}" style="padding:4px 14px;border-radius:4px;border:none;background:var(--info);color:#fff;cursor:pointer;font-size:.85rem">Register Webhook</button>
+<button onclick="deleteWebhook('{{ p.id }}')" id="delete-webhook-btn-{{ p.id }}" style="padding:4px 14px;border-radius:4px;border:1px solid var(--fail);background:transparent;color:var(--fail);cursor:pointer;font-size:.85rem;display:none">Remove Webhook</button>
+</div>
+<p id="webhook-manual-{{ p.id }}" style="display:none;font-size:.8rem;color:var(--muted);margin-top:8px"></p>
+</div>
+</div>
+</div>
+</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showProjectTab(projectId, tab) {
+  document.getElementById('list-' + projectId).style.display = tab === 'snapshots' ? '' : 'none';
+  document.getElementById('ci-' + projectId).style.display = tab === 'ci' ? '' : 'none';
+  var stab = document.getElementById('tab-snapshots-' + projectId);
+  var ctab = document.getElementById('tab-ci-' + projectId);
+  stab.style.borderBottomColor = tab === 'snapshots' ? 'var(--accent)' : 'transparent';
+  stab.style.color = tab === 'snapshots' ? 'var(--accent)' : 'var(--muted)';
+  ctab.style.borderBottomColor = tab === 'ci' ? 'var(--accent)' : 'transparent';
+  ctab.style.color = tab === 'ci' ? 'var(--accent)' : 'var(--muted)';
+  if (tab === 'ci') loadSnippets(projectId);
+}
+
+function switchCIMode(projectId, mode) {
+  document.getElementById('ci-push-' + projectId).style.display = mode === 'push' ? '' : 'none';
+  document.getElementById('ci-pull-' + projectId).style.display = mode === 'pull' ? '' : 'none';
+  var pushTab = document.getElementById('ci-push-tab-' + projectId);
+  var pullTab = document.getElementById('ci-pull-tab-' + projectId);
+  pushTab.style.background = mode === 'push' ? 'var(--accent)' : 'var(--surface)';
+  pushTab.style.color = mode === 'push' ? '#000' : 'var(--muted)';
+  pullTab.style.background = mode === 'pull' ? 'var(--accent)' : 'var(--surface)';
+  pullTab.style.color = mode === 'pull' ? '#000' : 'var(--muted)';
+}
+
+function loadSnippets(projectId) {
+  fetch('/api/projects/' + projectId + '/snippets')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      document.getElementById('push-snippet-' + projectId).textContent = data.push_snippet;
+      document.getElementById('pull-snippet-' + projectId).textContent = data.pull_snippet;
+      var ws = document.getElementById('webhook-status-' + projectId);
+      var delBtn = document.getElementById('delete-webhook-btn-' + projectId);
+      if (data.webhook_id) {
+        ws.textContent = 'Active';
+        ws.style.background = 'rgba(16,185,129,.1)';
+        ws.style.color = 'var(--pass)';
+        delBtn.style.display = '';
+      } else {
+        ws.textContent = 'Not registered';
+        ws.style.background = 'rgba(113,113,122,.1)';
+        ws.style.color = 'var(--muted)';
+        delBtn.style.display = 'none';
+      }
+      if (!data.is_public_server) {
+        var manual = document.getElementById('webhook-manual-' + projectId);
+        manual.style.display = '';
+        manual.textContent = 'Webhook requires a public server URL. Set it in project settings or use Push mode.';
+        document.getElementById('register-btn-' + projectId).disabled = true;
+      }
+    })
+    .catch(function(e) {
+      document.getElementById('push-snippet-' + projectId).textContent = 'Error: ' + e.message;
+    });
+}
+
+function copySnippet(projectId, mode) {
+  var el = document.getElementById(mode + '-snippet-' + projectId);
+  navigator.clipboard.writeText(el.textContent).then(function() {
+    var btn = el.parentElement.querySelector('button');
+    btn.textContent = 'Copied!';
+    setTimeout(function() { btn.textContent = 'Copy'; }, 1500);
+  });
+}
+
+function registerWebhook(projectId) {
+  var btn = document.getElementById('register-btn-' + projectId);
+  var status = document.getElementById('ci-status-' + projectId);
+  btn.disabled = true;
+  btn.textContent = 'Registering...';
+  fetch('/api/projects/' + projectId + '/register-webhook', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: '{}'
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.status === 'registered') {
+        btn.textContent = 'Register Webhook';
+        btn.disabled = false;
+        status.innerHTML = '<span style="color:var(--pass)">Webhook registered</span>';
+        loadSnippets(projectId);
+      } else {
+        btn.textContent = 'Register Webhook';
+        btn.disabled = false;
+        status.innerHTML = '<span style="color:var(--fail)">' + (data.detail || 'Failed') + '</span>';
+        var manual = document.getElementById('webhook-manual-' + projectId);
+        manual.style.display = '';
+        manual.innerHTML = 'Auto-registration failed. Add webhook manually in GitHub repo Settings &rarr; Webhooks:<br>URL: <code>' + location.origin + '/api/webhooks/github</code><br>Events: <code>Workflow runs</code>';
+      }
+    })
+    .catch(function(e) {
+      btn.textContent = 'Register Webhook';
+      btn.disabled = false;
+      status.innerHTML = '<span style="color:var(--fail)">' + e.message + '</span>';
+    });
+}
+
+function deleteWebhook(projectId) {
+  if (!confirm('Remove webhook from GitHub?')) return;
+  fetch('/api/projects/' + projectId + '/webhook', {method: 'DELETE'})
+    .then(function(r) { return r.json(); })
+    .then(function() { loadSnippets(projectId); })
+    .catch(function(e) { alert('Error: ' + e.message); });
+}
+
+function saveWebhookSettings(projectId) {
+  var artifactName = document.getElementById('artifact-name-' + projectId).value;
+  var workflowFilter = document.getElementById('workflow-filter-' + projectId).value;
+  fetch('/api/projects/' + projectId, {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({artifact_name: artifactName, workflow_filter: workflowFilter})
+  })
+    .then(function(r) { return r.json(); })
+    .then(function() { loadSnippets(projectId); })
+    .catch(function(e) { alert('Error: ' + e.message); });
+}
+
+function syncProject(projectId) {
+  var btn = document.getElementById('sync-btn-' + projectId);
+  var status = document.getElementById('ci-status-' + projectId);
+  btn.disabled = true;
+  btn.textContent = 'Syncing...';
+  fetch('/api/projects/' + projectId + '/sync', {method: 'POST'})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      btn.textContent = 'Sync Now';
+      btn.disabled = false;
+      if (data.snapshot_id) {
+        status.innerHTML = '<span style="color:var(--pass)">Score: ' + data.score + ' (' + data.grade + ') &mdash; </span><a href="/dashboard/snapshots/' + data.snapshot_id + '" style="color:var(--info)">View &rarr;</a>';
+        loadSnapshots(projectId);
+      } else {
+        status.innerHTML = '<span style="color:var(--fail)">' + (data.detail || data.reason || 'No results') + '</span>';
+      }
+    })
+    .catch(function(e) {
+      btn.textContent = 'Sync Now';
+      btn.disabled = false;
+      status.innerHTML = '<span style="color:var(--fail)">' + e.message + '</span>';
+    });
+}
+
+function editProject(projectId) {
+  // Remove any existing edit form
+  var existing = document.querySelector('.project-edit-row');
+  if (existing) existing.remove();
+
+  // Fetch current project data
+  fetch('/api/projects/' + projectId + '/linked-repos')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var row = document.querySelector('tr[data-project="' + projectId + '"]');
+      if (!row) return;
+
+      var editRow = document.createElement('tr');
+      editRow.className = 'project-edit-row';
+      var td = document.createElement('td');
+      td.colSpan = 6;
+      td.style.padding = '16px';
+      td.style.background = 'var(--surface)';
+      td.style.borderBottom = '1px solid var(--accent)';
+
+      td.innerHTML = '<h4 style="font-size:.9rem;margin-bottom:12px;font-family:Orbitron,sans-serif">Edit Project</h4>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">' +
+        '<div><label style="font-size:.8rem;color:var(--muted)">Default Branch</label>' +
+        '<input id="edit-branch-' + projectId + '" type="text" value="" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:6px 8px;color:var(--text);font-size:.85rem;margin-top:4px"></div>' +
+        '<div><label style="font-size:.8rem;color:var(--muted)">Terraform Directory</label>' +
+        '<input id="edit-tfdir-' + projectId + '" type="text" value="" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:6px 8px;color:var(--text);font-size:.85rem;margin-top:4px"></div>' +
+        '<div style="grid-column:span 2"><label style="font-size:.8rem;color:var(--muted)">Server URL</label>' +
+        '<input id="edit-url-' + projectId + '" type="text" value="" placeholder="http://your-server:8000" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:6px 8px;color:var(--text);font-size:.85rem;margin-top:4px"></div>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;align-items:center">' +
+        '<button onclick="saveProjectEdit(\'' + projectId + '\')" style="padding:4px 14px;border-radius:4px;border:none;background:var(--pass);color:#fff;cursor:pointer;font-size:.85rem;font-weight:600">Save</button>' +
+        '<button onclick="document.querySelector(\'.project-edit-row\').remove()" style="padding:4px 14px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:.85rem">Cancel</button>' +
+        '<span id="edit-status-' + projectId + '" style="font-size:.85rem"></span>' +
+        '</div>';
+
+      editRow.appendChild(td);
+      row.parentNode.insertBefore(editRow, row.nextSibling);
+
+      // Fetch current values
+      fetch('/api/projects/' + projectId + '/workflow')
+        .then(function(r) { return r.json(); })
+        .then(function(wf) {
+          document.getElementById('edit-branch-' + projectId).value = wf.terraform_dir ? '' : 'main';
+          document.getElementById('edit-tfdir-' + projectId).value = wf.terraform_dir || 'infra';
+          document.getElementById('edit-url-' + projectId).value = wf.server_url || window.location.origin;
+          // Get branch from the row
+          var branchEl = row.querySelector('code');
+          if (branchEl) document.getElementById('edit-branch-' + projectId).value = branchEl.textContent;
+        });
+    });
+}
+
+function saveProjectEdit(projectId) {
+  var branch = document.getElementById('edit-branch-' + projectId).value.trim();
+  var tfdir = document.getElementById('edit-tfdir-' + projectId).value.trim();
+  var url = document.getElementById('edit-url-' + projectId).value.trim();
+  var status = document.getElementById('edit-status-' + projectId);
+
+  fetch('/api/projects/' + projectId + '/settings', {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      default_branch: branch,
+      terraform_dir: tfdir,
+      server_url: url
+    })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    status.innerHTML = '<span style="color:var(--pass)">&#10003; Saved</span>';
+    setTimeout(function() { window.location.reload(); }, 1000);
+  })
+  .catch(function(e) {
+    status.innerHTML = '<span style="color:var(--fail)">Error: ' + e.message + '</span>';
+  });
+}
+
+function deleteProject(projectId, repo) {
+  if (!confirm('Delete project "' + repo + '" and all its snapshots?')) return;
+  fetch('/api/projects/' + projectId, {method: 'DELETE'})
+    .then(function(r) { return r.json(); })
+    .then(function() { window.location.reload(); })
+    .catch(function(e) { alert('Error: ' + e.message); });
+}
+
+function fetchBranches() {
+  var repo = document.getElementById('new-repo').value.trim()
+    .replace('https://github.com/','').replace('http://github.com/','')
+    .replace('github.com/','').replace(/\/$/,'').replace(/\.git$/,'');
+  document.getElementById('new-repo').value = repo;
+  var status = document.getElementById('branch-status');
+  var select = document.getElementById('new-default-branch');
+  if (!repo) return;
+
+  status.innerHTML = '<span style="color:var(--muted)">Fetching branches...</span>';
+
+  fetch('/api/projects/branches?repository=' + encodeURIComponent(repo))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var branches = data.branches || [];
+      if (branches.length === 0) {
+        status.innerHTML = '<span style="color:var(--warn)">No branches found</span>';
+        return;
+      }
+      select.innerHTML = '';
+      branches.forEach(function(b) {
+        var opt = document.createElement('option');
+        opt.value = b;
+        opt.textContent = b;
+        if (b === 'main' || b === 'master') opt.selected = true;
+        select.appendChild(opt);
+      });
+      // Auto-fill terraform directory
+      if (data.terraform_dir) {
+        document.getElementById('new-terraform-dir').value = data.terraform_dir;
+      }
+
+      var tfInfo = data.terraform_dir ? ' | Terraform: <code>' + data.terraform_dir + '</code>' : '';
+      status.innerHTML = '<span style="color:var(--pass)">' + branches.length + ' branches found' + tfInfo + '</span>';
+      if (data.error) {
+        status.innerHTML = '<span style="color:var(--warn)">' + branches.length + ' branches (fallback)</span>';
+      }
+    })
+    .catch(function(e) {
+      status.innerHTML = '<span style="color:var(--fail)">Failed: ' + e.message + '</span>';
+    });
+}
+
+function toggleNewProject() {
+  var form = document.getElementById('new-project-form');
+  var isHidden = getComputedStyle(form).display === 'none';
+  form.style.display = isHidden ? 'block' : 'none';
+  // Auto-fill server URL from current page
+  var urlField = document.getElementById('new-server-url');
+  if (!urlField.value) {
+    urlField.value = window.location.origin;
+  }
+}
+
+function addCtxRow() {
+  var container = document.getElementById('ctx-sources');
+  var row = document.createElement('div');
+  row.className = 'ctx-row';
+  row.innerHTML = '<input class="ctx-key" placeholder="e.g., Data Handling"><input class="ctx-val" placeholder="e.g., Handles PII for GDPR compliance"><button class="ctx-remove" onclick="this.parentElement.remove()">&#10005;</button>';
+  container.appendChild(row);
+}
+
+function createProject() {
+  var repo = document.getElementById('new-repo').value.trim();
+  var btn = document.getElementById('create-project-btn');
+  var status = document.getElementById('create-project-status');
+
+  if (!repo) {
+    status.innerHTML = '<span style="color:var(--fail)">Repository is required</span>';
+    return;
+  }
+
+  var sources = [];
+  var linked = [];
+  document.querySelectorAll('.ctx-row').forEach(function(row) {
+    var key = row.querySelector('.ctx-key').value.trim();
+    var val = row.querySelector('.ctx-val').value.trim();
+    if (key && val) {
+      sources.push({key: key, value: val});
+      if (key.toLowerCase().includes('app repo') || key.toLowerCase().includes('application')) {
+        linked.push({repository: val, repo_type: 'application'});
+      }
+    }
+  });
+
+  btn.disabled = true;
+  btn.textContent = 'Creating...';
+
+  fetch('/api/projects', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      repository: repo,
+      context_sources: sources,
+      linked_repos: linked,
+      default_branch: document.getElementById('new-default-branch').value,
+      terraform_dir: document.getElementById('new-terraform-dir').value || 'infra',
+      server_url: document.getElementById('new-server-url').value || window.location.origin
+    })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.id) {
+      status.innerHTML = '<span style="color:var(--pass)">&#10003; Project created</span>';
+      setTimeout(function() { window.location.reload(); }, 1000);
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'Create Project';
+      status.innerHTML = '<span style="color:var(--fail)">' + (data.detail || 'Error') + '</span>';
+    }
+  })
+  .catch(function(e) {
+    btn.disabled = false;
+    btn.textContent = 'Create Project';
+    status.innerHTML = '<span style="color:var(--fail)">' + e.message + '</span>';
+  });
+}
+
+var loadedProjects = {};
+function toggleProject(projectId) {
+  var el = document.getElementById('snapshots-' + projectId);
+  if (el.style.display === 'none') {
+    el.style.display = 'table-row';
+    if (!loadedProjects[projectId]) {
+      fetch('/api/projects/' + projectId + '/snapshots?limit=20')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          loadedProjects[projectId] = true;
+          var list = document.getElementById('list-' + projectId);
+          if (data.snapshots.length === 0) {
+            list.innerHTML = '<div style="padding:12px;color:var(--muted)">No snapshots yet. Run an assessment via POST /api/assess</div>';
+            return;
+          }
+          var html = '<table style="margin:0;width:100%">';
+          html += '<thead><tr><th>Commit</th><th>Score</th><th>Grade</th><th>Findings</th><th>Critical</th><th>Date</th><th></th></tr></thead><tbody>';
+          data.snapshots.forEach(function(s) {
+            var commitShort = s.commit_hash ? s.commit_hash.substring(0, 8) : s.id.substring(0, 8);
+            html += '<tr>';
+            html += '<td style="font-family:monospace;font-size:.85rem">' + commitShort + '</td>';
+            html += '<td><strong>' + s.score + '</strong></td>';
+            html += '<td><span style="color:var(--grade-' + s.grade.toLowerCase() + ')">' + s.grade + '</span></td>';
+            html += '<td>' + s.finding_count + '</td>';
+            html += '<td>' + (s.critical_count > 0 ? '<span style="color:var(--critical)">' + s.critical_count + '</span>' : '0') + '</td>';
+            html += '<td style="font-size:.85rem;color:var(--muted)">' + s.created_at.substring(0, 19) + '</td>';
+            html += '<td><a href="/dashboard/snapshots/' + s.id + '" style="font-size:.85rem">View</a></td>';
+            html += '</tr>';
+          });
+          html += '</tbody></table>';
+          list.innerHTML = html;
+        });
+    }
+  } else {
+    el.style.display = 'none';
+  }
+}
+</script>
+{% endblock %}

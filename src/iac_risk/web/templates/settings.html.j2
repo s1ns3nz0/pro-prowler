@@ -1,0 +1,250 @@
+{% extends "base.html.j2" %}
+{% block title %}Settings — Pro-Prowler{% endblock %}
+{% block content %}
+<style>
+.settings-section{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:16px}
+.settings-section h3{font-size:1rem;margin-bottom:12px}
+.setting-row{display:flex;align-items:center;gap:12px;margin-bottom:8px;font-size:.9rem}
+.setting-label{width:200px;color:var(--muted)}
+.setting-input{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:.9rem;width:100px;text-align:center}
+.setting-select{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:.9rem}
+.save-btn{padding:6px 16px;border-radius:6px;border:none;background:var(--pass);color:#fff;cursor:pointer;font-size:.85rem;font-weight:600}
+.save-btn:disabled{opacity:.5}
+.reset-link{font-size:.8rem;color:var(--warn);cursor:pointer;margin-left:8px;font-weight:600;padding:3px 8px;border:1px solid var(--warn);border-radius:4px}
+.reset-link:hover{background:var(--warn);color:#000}
+</style>
+
+<h2 style="font-size:1.1rem;margin-bottom:16px">Settings</h2>
+<p style="font-size:.85rem;color:var(--muted);margin-bottom:20px">Configure default values for risk assessments. Changes apply to all future assessments.</p>
+
+{# Risk Assessment Defaults #}
+<div class="settings-section">
+<div style="display:flex;justify-content:space-between;align-items:center">
+<h3>Risk Assessment Defaults</h3>
+<span class="reset-link" onclick="resetSection('defaults')">Reset to defaults</span>
+</div>
+<p style="font-size:.85rem;color:var(--muted);margin-bottom:12px;line-height:1.5">
+When the AI Context Analysis Agent cannot determine a resource's business context (no business documents, no linked repos, or LLM unavailable), these default values are used. Raising the default criticality makes the assessment more conservative — all uncontextualized resources will be treated as higher risk, resulting in higher impact scores and potentially more compliance gaps flagged.
+</p>
+<div class="setting-row">
+<span class="setting-label">Default Asset Criticality</span>
+<div style="display:flex;gap:4px;align-items:center">
+<select onchange="if(this.value==='__custom'){document.getElementById('s-default_criticality').style.display='';document.getElementById('s-default_criticality').focus();}else{document.getElementById('s-default_criticality').style.display='none';document.getElementById('s-default_criticality').value=this.value;}" class="setting-select" id="crit-select">
+{% for v in ['VERY_LOW','LOW','MODERATE','HIGH','VERY_HIGH','__custom'] %}
+<option value="{{ v }}" {{ 'selected' if s.default_criticality == v }}>{{ 'Custom...' if v == '__custom' else v }}</option>
+{% endfor %}
+</select>
+<input id="s-default_criticality" class="setting-input" style="width:140px;text-align:left;display:{{ 'none' if s.default_criticality in ['VERY_LOW','LOW','MODERATE','HIGH','VERY_HIGH'] else '' }}" value="{{ s.default_criticality }}" placeholder="Type custom value">
+</div>
+</div>
+<div class="setting-row">
+<span class="setting-label">Default Data Classification</span>
+<div style="display:flex;gap:4px;align-items:center">
+<select onchange="if(this.value==='__custom'){document.getElementById('s-default_data_classification').style.display='';document.getElementById('s-default_data_classification').focus();}else{document.getElementById('s-default_data_classification').style.display='none';document.getElementById('s-default_data_classification').value=this.value;}" class="setting-select" id="class-select">
+{% for v in ['public','internal','confidential','restricted','top-secret','pii','phi','pci','__custom'] %}
+<option value="{{ v }}" {{ 'selected' if s.default_data_classification == v }}>{{ 'Custom...' if v == '__custom' else v }}</option>
+{% endfor %}
+</select>
+<input id="s-default_data_classification" class="setting-input" style="width:140px;text-align:left;display:{{ 'none' if s.default_data_classification in ['public','internal','confidential','restricted','top-secret','pii','phi','pci'] else '' }}" value="{{ s.default_data_classification }}" placeholder="Type custom value">
+</div>
+</div>
+<div class="setting-row" style="align-items:flex-start">
+<span class="setting-label" style="padding-top:4px">Compliance Frameworks</span>
+<div>
+{% for fw in ['PCI_DSS','ISO_27001','ISO_27701','SOC_2','GDPR','ISMS_P'] %}
+<label style="display:block;cursor:pointer;margin-bottom:4px;font-size:.9rem">
+<input type="checkbox" class="scope-checkbox" value="{{ fw }}" {{ 'checked' if fw in s.default_compliance_scope }}> {{ fw }}
+</label>
+{% endfor %}
+</div>
+</div>
+<button class="save-btn" onclick="saveSection('defaults')">Save Defaults</button>
+<span id="status-defaults" style="font-size:.85rem;margin-left:8px"></span>
+</div>
+
+{# Quality Scoring #}
+<div class="settings-section">
+<div style="display:flex;justify-content:space-between;align-items:center">
+<h3>Quality Scoring</h3>
+<span class="reset-link" onclick="resetSection('scoring')">Reset to defaults</span>
+</div>
+<p style="font-size:.85rem;color:var(--muted);margin-bottom:12px;line-height:1.5">
+The quality score starts at 100 and is reduced by a weight for each finding based on its severity. For example, with default weights, a single CRITICAL finding deducts 15 points (100 → 85, Grade B). Increasing the weights makes scoring stricter — more points lost per finding. The score cannot go below 0.
+</p>
+<p style="font-size:.85rem;color:var(--muted);margin-bottom:12px;font-weight:600">Severity Weights (points deducted per finding)</p>
+<div class="setting-row">
+<span class="setting-label">CRITICAL weight</span>
+<input type="number" id="s-weight_critical" class="setting-input" value="{{ s.weight_critical }}">
+</div>
+<div class="setting-row">
+<span class="setting-label">HIGH weight</span>
+<input type="number" id="s-weight_high" class="setting-input" value="{{ s.weight_high }}">
+</div>
+<div class="setting-row">
+<span class="setting-label">MODERATE weight</span>
+<input type="number" id="s-weight_moderate" class="setting-input" value="{{ s.weight_moderate }}">
+</div>
+<div class="setting-row">
+<span class="setting-label">LOW weight</span>
+<input type="number" id="s-weight_low" class="setting-input" value="{{ s.weight_low }}">
+</div>
+<h4 style="font-size:.9rem;margin:16px 0 4px">Grade Boundaries</h4>
+<p style="font-size:.85rem;color:var(--muted);margin-bottom:8px;line-height:1.5">
+The letter grade shown on each assessment is determined by the quality score. Grades appear on the dashboard, in CI/CD output, and in reports. Raising boundaries makes grading stricter — e.g., setting Grade A ≥ 95 means only near-perfect assessments receive an A.
+</p>
+<div class="setting-row">
+<span class="setting-label">Grade A ≥</span>
+<input type="number" id="s-grade_a" class="setting-input" value="{{ s.grade_a }}">
+</div>
+<div class="setting-row">
+<span class="setting-label">Grade B ≥</span>
+<input type="number" id="s-grade_b" class="setting-input" value="{{ s.grade_b }}">
+</div>
+<div class="setting-row">
+<span class="setting-label">Grade C ≥</span>
+<input type="number" id="s-grade_c" class="setting-input" value="{{ s.grade_c }}">
+</div>
+<div class="setting-row">
+<span class="setting-label">Grade D ≥</span>
+<input type="number" id="s-grade_d" class="setting-input" value="{{ s.grade_d }}">
+</div>
+<button class="save-btn" onclick="saveSection('scoring')">Save Scoring</button>
+<span id="status-scoring" style="font-size:.85rem;margin-left:8px"></span>
+</div>
+
+{# Risk Classification #}
+<div class="settings-section">
+<div style="display:flex;justify-content:space-between;align-items:center">
+<h3>Risk Classification</h3>
+<span class="reset-link" onclick="resetSection('risk')">Reset to defaults</span>
+</div>
+<p style="font-size:.85rem;color:var(--muted);margin-bottom:12px;line-height:1.5">
+Each finding's risk level is calculated as Likelihood × Impact (1-25 scale, per NIST SP 800-30). These boundaries map the numeric score to a severity label (CRITICAL, HIGH, MODERATE, LOW). The severity label determines the quality score weight applied and the color coding in the dashboard. Lowering thresholds makes more findings appear as higher severity.
+</p>
+<div class="setting-row">
+<span class="setting-label">CRITICAL ≥</span>
+<input type="number" id="s-risk_critical" class="setting-input" value="{{ s.risk_critical }}">
+<span style="font-size:.8rem;color:var(--muted)">out of 25</span>
+</div>
+<div class="setting-row">
+<span class="setting-label">HIGH ≥</span>
+<input type="number" id="s-risk_high" class="setting-input" value="{{ s.risk_high }}">
+</div>
+<div class="setting-row">
+<span class="setting-label">MODERATE ≥</span>
+<input type="number" id="s-risk_moderate" class="setting-input" value="{{ s.risk_moderate }}">
+</div>
+<div class="setting-row">
+<span class="setting-label">LOW ≥</span>
+<input type="number" id="s-risk_low" class="setting-input" value="{{ s.risk_low }}">
+</div>
+<button class="save-btn" onclick="saveSection('risk')">Save Risk Classification</button>
+<span id="status-risk" style="font-size:.85rem;margin-left:8px"></span>
+</div>
+
+{# CI/CD Gate #}
+<div class="settings-section">
+<div style="display:flex;justify-content:space-between;align-items:center">
+<h3>CI/CD Gate</h3>
+<span class="reset-link" onclick="resetSection('gate')">Reset to defaults</span>
+</div>
+<p style="font-size:.85rem;color:var(--muted);margin-bottom:12px;line-height:1.5">
+When the quality score falls below this threshold, the CI/CD pipeline returns exit code 1 (fail) and the dashboard shows WARNING status. Raising the threshold makes the gate stricter — more assessments will be blocked. Setting it to 0 effectively disables the gate (everything passes).
+</p>
+<div class="setting-row">
+<span class="setting-label">Fail threshold</span>
+<input type="number" id="s-gate_threshold" class="setting-input" value="{{ s.gate_threshold }}">
+</div>
+<button class="save-btn" onclick="saveSection('gate')">Save Gate Settings</button>
+<span id="status-gate" style="font-size:.85rem;margin-left:8px"></span>
+</div>
+
+{# CI Integration #}
+<div class="settings-section">
+<div style="display:flex;justify-content:space-between;align-items:center">
+<h3>CI Integration</h3>
+<span class="reset-link" onclick="resetSection('ci')">Reset to defaults</span>
+</div>
+<p style="font-size:.85rem;color:var(--muted);margin-bottom:12px;line-height:1.5">
+The server URL is embedded in auto-generated GitHub Actions workflow files. Set this to the public URL of your Pro-Prowler instance (e.g., the EC2 public IP or domain). CI runners must be able to reach this URL.
+</p>
+<div class="setting-row">
+<span class="setting-label">Server URL</span>
+<input type="text" id="s-server_url" class="setting-input" style="width:300px;text-align:left" value="{{ s.server_url }}">
+</div>
+<button class="save-btn" onclick="saveSection('ci')">Save CI Settings</button>
+<span id="status-ci" style="font-size:.85rem;margin-left:8px"></span>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+var sectionKeys = {
+  defaults: ['default_criticality', 'default_data_classification'],
+  scoring: ['weight_critical', 'weight_high', 'weight_moderate', 'weight_low', 'grade_a', 'grade_b', 'grade_c', 'grade_d'],
+  risk: ['risk_critical', 'risk_high', 'risk_moderate', 'risk_low'],
+  gate: ['gate_threshold'],
+  ci: ['server_url']
+};
+
+var defaults = {
+  default_criticality: 'MODERATE', default_data_classification: 'internal',
+  weight_critical: '-15', weight_high: '-8', weight_moderate: '-3', weight_low: '-1',
+  grade_a: '90', grade_b: '75', grade_c: '60', grade_d: '40',
+  risk_critical: '16', risk_high: '9', risk_moderate: '4', risk_low: '2',
+  gate_threshold: '60',
+  server_url: 'http://localhost:8000'
+};
+
+function saveSection(section) {
+  var data = {};
+  var keys = sectionKeys[section];
+  keys.forEach(function(k) {
+    var el = document.getElementById('s-' + k);
+    if (el) data[k] = el.value;
+  });
+  // Handle compliance scope separately for defaults section
+  if (section === 'defaults') {
+    // Read criticality: from select or custom input
+    var critSelect = document.getElementById('crit-select');
+    var critInput = document.getElementById('s-default_criticality');
+    data['default_criticality'] = critSelect.value === '__custom' ? critInput.value : critSelect.value;
+    // Read classification: from select or custom input
+    var classSelect = document.getElementById('class-select');
+    var classInput = document.getElementById('s-default_data_classification');
+    data['default_data_classification'] = classSelect.value === '__custom' ? classInput.value : classSelect.value;
+    // Compliance scope
+    var scope = [];
+    document.querySelectorAll('.scope-checkbox:checked').forEach(function(cb) {
+      scope.push(cb.value);
+    });
+    data['default_compliance_scope'] = JSON.stringify(scope);
+  }
+  var status = document.getElementById('status-' + section);
+  fetch('/api/settings', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(data)
+  })
+  .then(function(r) { return r.json(); })
+  .then(function() {
+    status.innerHTML = '<span style="color:var(--pass)">&#10003; Saved</span>';
+    setTimeout(function() { status.innerHTML = ''; }, 3000);
+  })
+  .catch(function(e) {
+    status.innerHTML = '<span style="color:var(--fail)">Error: ' + e.message + '</span>';
+  });
+}
+
+function resetSection(section) {
+  var keys = sectionKeys[section];
+  keys.forEach(function(k) {
+    var el = document.getElementById('s-' + k);
+    if (el && defaults[k] !== undefined) el.value = defaults[k];
+  });
+  if (section === 'defaults') {
+    document.querySelectorAll('.scope-checkbox').forEach(function(cb) { cb.checked = true; });
+  }
+}
+</script>
+{% endblock %}

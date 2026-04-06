@@ -1,0 +1,196 @@
+- check_id: apigateway_authorizer
+  title: API Gateway Authorizer Configured
+  description: Ensure API Gateway has an authorizer configured for authentication
+  severity: CRITICAL
+  resource_types:
+  - aws_api_gateway_method
+  detection_logic:
+    field_path: authorization
+    operator: not_equals
+    expected_value: NONE
+  remediation: Configure a Cognito, Lambda, or IAM authorizer on API Gateway methods
+  compliance_mappings:
+    PCI_DSS:
+    - 7.1.1
+    - 8.2.1
+    ISO_27001:
+    - A.9.4.1
+    - A.14.1.2
+    ISO_27701:
+    - 6.6.2.1
+    SOC_2:
+    - CC6.1
+    - CC6.3
+    GDPR:
+    - Art.32
+    - Art.25
+    ISMS_P:
+    - 2.6.1
+    - 2.6.7
+  attack_scenarios:
+  - technique: Unauthenticated API Access
+    description: >
+      An attacker discovers API Gateway endpoints without authorization and
+      invokes them directly. Without an authorizer, any internet user can
+      access backend resources, execute business logic, and extract data
+      through the API.
+    mitre_tactic: "Initial Access (TA0001)"
+    impact: >
+      Unauthorized access to backend services, data exfiltration through
+      unprotected API endpoints, abuse of business logic.
+    threat_source: ADVERSARIAL
+- check_id: apigateway_waf
+  title: API Gateway WAF Integration
+  description: Ensure API Gateway stage has a WAF web ACL associated
+  severity: HIGH
+  resource_types:
+  - aws_api_gateway_stage
+  detection_logic:
+    field_path: web_acl_arn
+    operator: exists
+    sub_resource_type: aws_wafv2_web_acl_association
+    sub_resource_link_field: resource_arn
+  remediation: Associate an AWS WAF web ACL with the API Gateway stage
+  compliance_mappings:
+    PCI_DSS:
+    - 6.5.1
+    - '6.6'
+    ISO_27001:
+    - A.13.1.1
+    - A.14.1.2
+    ISO_27701:
+    - 6.10.1.1
+    SOC_2:
+    - CC6.6
+    - CC7.2
+    GDPR:
+    - Art.32
+    ISMS_P:
+    - 2.8.1
+    - 2.10.1
+  attack_scenarios:
+  - technique: API Injection Attacks Without WAF
+    description: >
+      Without WAF protection, an attacker sends SQL injection, NoSQL
+      injection, and command injection payloads directly to API Gateway
+      endpoints. No request inspection or filtering occurs before the
+      payload reaches the backend Lambda or integration.
+    mitre_tactic: "Initial Access (TA0001)"
+    impact: >
+      Successful exploitation of injection vulnerabilities, backend
+      data breach, unauthorized command execution.
+    threat_source: ADVERSARIAL
+- check_id: apigateway_logging
+  title: API Gateway Execution Logging
+  description: Ensure API Gateway stage has execution logging enabled
+  severity: MODERATE
+  resource_types:
+  - aws_api_gateway_stage
+  detection_logic:
+    field_path: access_log_settings.0.destination_arn
+    operator: exists
+  remediation: Configure access_log_settings with a CloudWatch log group destination
+  compliance_mappings:
+    PCI_DSS:
+    - '10.2'
+    - '10.3'
+    ISO_27001:
+    - A.12.4.1
+    ISO_27701:
+    - 6.9.4.1
+    SOC_2:
+    - CC7.2
+    GDPR:
+    - Art.30
+    - Art.33
+    ISMS_P:
+    - 2.9.1
+    - 2.9.3
+  attack_scenarios:
+  - technique: Undetected API Abuse and Enumeration
+    description: >
+      Without execution logging, an attacker performs API enumeration,
+      credential stuffing, and data scraping without generating audit
+      trails. Security teams cannot detect abnormal API usage patterns
+      or reconstruct attack timelines.
+    mitre_tactic: "Defense Evasion (TA0005)"
+    impact: >
+      Inability to detect API abuse, no forensic evidence of attacks,
+      delayed incident response for API-related breaches.
+    threat_source: ADVERSARIAL
+- check_id: apigateway_ssl_certificate
+  title: API Gateway Custom Domain TLS Certificate
+  description: Ensure API Gateway custom domain has a TLS certificate configured
+  severity: HIGH
+  resource_types:
+  - aws_api_gateway_domain_name
+  detection_logic:
+    field_path: certificate_arn
+    operator: exists
+  remediation: Configure a valid ACM certificate on the API Gateway custom domain
+  compliance_mappings:
+    PCI_DSS:
+    - '4.1'
+    - 4.1.1
+    ISO_27001:
+    - A.10.1.1
+    ISO_27701:
+    - 6.7.1.1
+    SOC_2:
+    - CC6.1
+    - CC6.7
+    GDPR:
+    - Art.32
+    ISMS_P:
+    - 2.5.1
+    - 2.7.1
+  attack_scenarios:
+  - technique: API Traffic Interception
+    description: >
+      Without proper TLS on the custom domain, API traffic between clients
+      and the gateway is vulnerable to interception. An attacker captures
+      API keys, authentication tokens, and request/response bodies containing
+      sensitive data.
+    mitre_tactic: "Credential Access (TA0006)"
+    impact: >
+      API key theft, authentication token exposure, interception of
+      sensitive request and response data in transit.
+    threat_source: ADVERSARIAL
+- check_id: apigateway_throttling
+  title: API Gateway Throttling Configured
+  description: Ensure API Gateway stage has throttling configured
+  severity: MODERATE
+  resource_types:
+  - aws_api_gateway_method_settings
+  detection_logic:
+    field_path: settings.0.throttling_rate_limit
+    operator: exists
+  remediation: Configure throttling_rate_limit and throttling_burst_limit in method settings
+  compliance_mappings:
+    PCI_DSS:
+    - 6.5.10
+    ISO_27001:
+    - A.14.1.2
+    - A.17.1.1
+    ISO_27701:
+    - 6.10.1.1
+    SOC_2:
+    - CC6.6
+    - CC7.5
+    GDPR:
+    - Art.32
+    ISMS_P:
+    - 2.8.1
+    - 2.12.1
+  attack_scenarios:
+  - technique: API DDoS and Resource Exhaustion
+    description: >
+      Without throttling, an attacker sends a massive volume of API requests
+      to exhaust backend resources. This causes Lambda concurrency limits to
+      be reached, database connections to be saturated, and legitimate users
+      to experience service denial.
+    mitre_tactic: "Impact (TA0040)"
+    impact: >
+      Backend resource exhaustion, service unavailability for legitimate
+      users, inflated AWS costs from excessive invocations.
+    threat_source: ADVERSARIAL

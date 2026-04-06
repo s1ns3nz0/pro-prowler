@@ -1,0 +1,10 @@
+framework: ISO_27701
+controls:
+  - control_id: "6.6.2.1"
+    control_title: "Management of privileged access rights (PII)"
+  - control_id: "6.7.1.1"
+    control_title: "Policy on the use of cryptographic controls (PII)"
+  - control_id: "6.9.4.1"
+    control_title: "Event logging (PII)"
+  - control_id: "6.10.1.1"
+    control_title: "Network controls (PII)"

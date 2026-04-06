@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.egg-info/
+dist/
+build/
+.env
+.env.local
+.pro-prowler-cache/
+.iac-risk-cache/
+data/snapshots/
+data/metadata.db*
+data/governance/
+reports/
+*.swp
+*.swo
+.DS_Store

@@ -1,0 +1,319 @@
+- check_id: iam_policy_wildcard_actions
+  title: IAM Policy Wildcard Actions
+  description: Ensure IAM policies do not use wildcard (*) actions
+  severity: CRITICAL
+  resource_types:
+  - aws_iam_policy
+  detection_logic:
+    field_path: policy
+    operator: not_contains
+    expected_value: '"Action":"*"'
+  remediation: Replace wildcard actions with specific, least-privilege permissions
+  compliance_mappings:
+    PCI_DSS:
+    - 7.1.1
+    - 7.1.2
+    ISO_27001:
+    - A.9.2.3
+    - A.9.4.1
+    ISO_27701:
+    - 6.6.2.1
+    SOC_2:
+    - CC6.1
+    - CC6.3
+    GDPR:
+    - Art.32
+    - Art.25
+    ISMS_P:
+    - 2.6.1
+    - 2.6.2
+  attack_scenarios:
+  - technique: Wildcard Permission Exploitation
+    description: 'An attacker gaining control of a principal with Action:* has unlimited
+      AWS API access. They enumerate all services, create backdoor IAM users, modify
+      security policies, and exfiltrate data from any service.
+
+      '
+    mitre_tactic: Privilege Escalation (TA0004)
+    impact: 'Unrestricted AWS API access, ability to compromise entire AWS environment,
+      admin-equivalent permissions.
+
+      '
+    threat_source: ADVERSARIAL
+- check_id: iam_policy_wildcard_resource
+  title: IAM Policy Wildcard Resource
+  description: Ensure IAM policies do not grant access to all resources (*)
+  severity: HIGH
+  resource_types:
+  - aws_iam_policy
+  detection_logic:
+    field_path: policy
+    operator: not_contains
+    expected_value: '"Resource":"*"'
+  remediation: Scope resource ARNs to specific resources
+  compliance_mappings:
+    PCI_DSS:
+    - 7.1.1
+    ISO_27001:
+    - A.9.2.3
+    SOC_2:
+    - CC6.1
+    - CC6.3
+    ISMS_P:
+    - 2.6.2
+  attack_scenarios:
+  - technique: Cross-Resource Privilege Escalation
+    description: 'A policy with Resource:* allows the principal to modify any AWS
+      resource. An attacker targets sensitive IAM roles, modifies trust policies to
+      allow self-assumption, and attaches admin policies to themselves.
+
+      '
+    mitre_tactic: Privilege Escalation (TA0004)
+    impact: 'Ability to modify any AWS resource, privilege escalation through role
+      assumption hijacking, org-wide lateral movement.
+
+      '
+    threat_source: ADVERSARIAL
+- check_id: iam_role_trust_policy_restricted
+  title: IAM Role Trust Policy Restricted
+  description: Ensure IAM role trust policy does not allow assumption by all AWS principals
+  severity: CRITICAL
+  resource_types:
+  - aws_iam_role
+  detection_logic:
+    field_path: assume_role_policy
+    operator: not_contains
+    expected_value: '"Principal":"*"'
+  remediation: Restrict the trust policy to specific AWS accounts or services
+  compliance_mappings:
+    PCI_DSS:
+    - 7.1.1
+    - 7.1.2
+    ISO_27001:
+    - A.9.2.3
+    SOC_2:
+    - CC6.1
+    - CC6.3
+    GDPR:
+    - Art.32
+    ISMS_P:
+    - 2.6.1
+    - 2.6.7
+  attack_scenarios:
+  - technique: Cross-Account Role Assumption
+    description: 'A role with Principal:* can be assumed by any AWS principal in any
+      account. An attacker from an external account assumes this role and gains its
+      permissions, enabling cross-account privilege escalation.
+
+      '
+    mitre_tactic: Privilege Escalation (TA0004)
+    impact: 'Cross-account access, unauthorized role assumption, ability to access
+      sensitive role permissions from external accounts.
+
+      '
+    threat_source: ADVERSARIAL
+- check_id: iam_no_inline_policy_on_user
+  title: No Inline Policies on IAM Users
+  description: Ensure IAM users do not have inline policies attached
+  severity: MODERATE
+  resource_types:
+  - aws_iam_user_policy
+  detection_logic:
+    field_path: policy
+    operator: not_exists
+  remediation: Use managed policies attached to groups or roles instead of inline
+    user policies
+  compliance_mappings:
+    PCI_DSS:
+    - 7.1.1
+    ISO_27001:
+    - A.9.2.3
+    SOC_2:
+    - CC6.1
+    ISMS_P:
+    - 2.6.2
+  attack_scenarios:
+  - technique: Inline Policy Injection for Privilege Escalation
+    description: 'An attacker with iam:PutUserPolicy permission injects an inline
+      policy granting admin permissions, bypassing permission boundaries. Inline policies
+      are harder to audit than managed policies, enabling stealthy privilege escalation.
+
+      '
+    mitre_tactic: Privilege Escalation (TA0004)
+    impact: 'Direct privilege escalation without boundary constraints, hidden policy
+      modifications difficult to detect in audits.
+
+      '
+    threat_source: ADVERSARIAL
+- check_id: iam_policy_no_full_admin
+  title: IAM Policy No Full Admin Access
+  description: Ensure no IAM policy grants full administrator access (Action:* on
+    Resource:*)
+  severity: CRITICAL
+  resource_types:
+  - aws_iam_policy
+  detection_logic:
+    field_path: policy
+    operator: not_contains
+    expected_value: '"Effect":"Allow","Action":"*","Resource":"*"'
+  remediation: Remove full admin access and apply least-privilege principle
+  compliance_mappings:
+    PCI_DSS:
+    - 7.1.1
+    - 7.1.2
+    - '7.2'
+    ISO_27001:
+    - A.9.2.3
+    - A.9.4.1
+    ISO_27701:
+    - 6.6.2.1
+    SOC_2:
+    - CC6.1
+    - CC6.3
+    GDPR:
+    - Art.32
+    - Art.25
+    ISMS_P:
+    - 2.6.1
+    - 2.6.2
+    - 2.6.7
+  attack_scenarios:
+  - technique: Full AWS Environment Compromise
+    description: 'An attacker controlling a principal with Action:* and Resource:*
+      can perform any action on any resource — creating admin accounts, disabling
+      CloudTrail, exfiltrating all data, and destroying infrastructure.
+
+      '
+    mitre_tactic: Privilege Escalation (TA0004)
+    impact: 'Complete AWS environment compromise, unlimited privilege escalation,
+      ability to disable all security controls.
+
+      '
+    threat_source: ADVERSARIAL
+  - technique: Backdoor Account Creation and Persistence
+    description: 'With full admin, the attacker creates new IAM users with console
+      access, generates long-lived access keys, and sets up cross-account roles for
+      persistent re-entry even after the initial compromise is remediated.
+
+      '
+    mitre_tactic: Persistence (TA0003)
+    impact: 'Persistent access surviving credential rotation, multiple re-entry paths,
+      difficult to fully eradicate.
+
+      '
+    threat_source: ADVERSARIAL
+- check_id: iam_password_policy_length
+  title: IAM Password Policy Minimum Length
+  description: Ensure IAM password policy requires minimum length of 14 characters
+  severity: MODERATE
+  resource_types:
+  - aws_iam_account_password_policy
+  detection_logic:
+    field_path: minimum_password_length
+    operator: greater_than
+    expected_value: 13
+  remediation: Set minimum_password_length to at least 14 in the account password policy
+  compliance_mappings:
+    PCI_DSS:
+    - 8.2.3
+    ISO_27001:
+    - A.9.4.3
+    ISO_27701:
+    - 6.6.4.1
+    SOC_2:
+    - CC6.1
+    GDPR:
+    - Art.32
+    ISMS_P:
+    - 2.6.4
+  attack_scenarios:
+  - technique: Password Brute Force and Dictionary Attack
+    description: >
+      A weak minimum password length allows users to set short passwords
+      that are vulnerable to brute force and dictionary attacks. An attacker
+      uses automated tools to crack short passwords in minutes, gaining
+      console access to IAM users.
+    mitre_tactic: "Credential Access (TA0006)"
+    impact: >
+      Successful password cracking, unauthorized console access,
+      ability to perform actions with the compromised user's permissions.
+    threat_source: ADVERSARIAL
+- check_id: iam_root_mfa_enabled
+  title: IAM Root Account MFA Enabled
+  description: Ensure the root account has multi-factor authentication enabled
+  severity: CRITICAL
+  resource_types:
+  - aws_iam_account_password_policy
+  detection_logic:
+    field_path: require_numbers
+    operator: equals
+    expected_value: true
+  remediation: Enable MFA on the root account using a hardware or virtual MFA device
+  compliance_mappings:
+    PCI_DSS:
+    - 8.3.1
+    - 8.3.2
+    ISO_27001:
+    - A.9.4.2
+    ISO_27701:
+    - 6.6.4.1
+    SOC_2:
+    - CC6.1
+    - CC6.3
+    GDPR:
+    - Art.32
+    ISMS_P:
+    - 2.6.1
+    - 2.6.4
+  attack_scenarios:
+  - technique: Root Account Credential Compromise
+    description: >
+      An attacker obtains the root account password through phishing or
+      credential leakage. Without MFA, they gain unrestricted access to
+      the entire AWS account with no additional authentication barrier,
+      enabling complete environment takeover.
+    mitre_tactic: "Initial Access (TA0001)"
+    impact: >
+      Complete AWS account takeover, unrestricted access to all services
+      and data, ability to modify billing and close the account.
+    threat_source: ADVERSARIAL
+- check_id: iam_access_key_rotation
+  title: IAM Access Key Rotation
+  description: Ensure IAM access keys are rotated within 90 days
+  severity: MODERATE
+  resource_types:
+  - aws_iam_access_key
+  detection_logic:
+    field_path: status
+    operator: equals
+    expected_value: Active
+  remediation: Rotate IAM access keys every 90 days and deactivate old keys
+  compliance_mappings:
+    PCI_DSS:
+    - 3.6.4
+    - 8.2.4
+    ISO_27001:
+    - A.9.2.4
+    - A.9.4.3
+    ISO_27701:
+    - 6.6.2.2
+    SOC_2:
+    - CC6.1
+    - CC6.3
+    GDPR:
+    - Art.32
+    ISMS_P:
+    - 2.6.4
+    - 2.5.2
+  attack_scenarios:
+  - technique: Stale Access Key Exploitation
+    description: >
+      Long-lived access keys that are never rotated provide an extended
+      window for exploitation. An attacker who obtains a leaked key from
+      code repositories, logs, or insider access can use it indefinitely
+      without detection if it is never rotated.
+    mitre_tactic: "Credential Access (TA0006)"
+    impact: >
+      Long-term unauthorized API access, extended exploitation window,
+      difficulty detecting compromised credentials.
+    threat_source: ADVERSARIAL

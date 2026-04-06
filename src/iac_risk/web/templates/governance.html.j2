@@ -1,0 +1,330 @@
+{% extends "base.html.j2" %}
+{% block title %}Governance — Pro-Prowler{% endblock %}
+{% block content %}
+<style>
+.upload-form{display:none;margin-bottom:24px;padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:8px}
+.doc-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.doc-info{flex:1}
+.doc-type-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:600;background:rgba(59,130,246,.1);color:var(--info);margin-right:8px}
+.type-tabs{display:flex;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:16px}
+.type-tab{padding:6px 16px;border:none;background:var(--bg);color:var(--muted);cursor:pointer;font-size:.85rem}
+.type-tab.active{background:var(--info);color:#fff}
+</style>
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+<div>
+<h2 style="font-size:1.1rem">Governance Documents</h2>
+<p style="font-size:.85rem;color:var(--muted);margin-top:4px">Upload information security policies, data classification matrices, and privacy documents. These feed into the AI risk assessment.</p>
+</div>
+<button onclick="toggleUpload()" id="upload-toggle-btn" style="padding:6px 16px;border-radius:6px;border:none;background:var(--info);color:#fff;cursor:pointer;font-size:.85rem;font-weight:600">+ Upload Document</button>
+</div>
+
+{# Upload Form #}
+<div id="upload-form" class="upload-form">
+<h3 style="font-size:1rem;margin-bottom:12px">Upload Document</h3>
+
+<div class="type-tabs">
+<button class="type-tab active" onclick="switchDocType('text')">Text / Markdown</button>
+<button class="type-tab" onclick="switchDocType('url')">URL</button>
+<button class="type-tab" onclick="switchDocType('pdf')">PDF</button>
+<button class="type-tab" onclick="switchDocType('docx')">DOCX</button>
+</div>
+
+<div style="margin-bottom:12px">
+<label style="font-size:.85rem;color:var(--muted);display:block;margin-bottom:4px">Document Title</label>
+<input id="doc-title" type="text" placeholder="e.g., Information Security Management Policy" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:.9rem">
+</div>
+
+<div id="input-text" class="doc-input">
+<label style="font-size:.85rem;color:var(--muted);display:block;margin-bottom:4px">Content</label>
+<textarea id="doc-content" rows="8" placeholder="Paste your policy document content here...
+
+Example:
+# Data Classification Policy
+All data must be classified into one of four categories:
+- Public: No restrictions
+- Internal: Default for business data
+- Confidential: Customer PII, financial records
+- Restricted: Payment card data, health records" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 12px;color:var(--text);font-size:.85rem;font-family:inherit;resize:vertical"></textarea>
+</div>
+
+<div id="input-url" class="doc-input" style="display:none">
+<label style="font-size:.85rem;color:var(--muted);display:block;margin-bottom:4px">URL</label>
+<input id="doc-url" type="text" placeholder="e.g., https://wiki.company.com/security-policy" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:.9rem">
+</div>
+
+<div id="input-pdf" class="doc-input" style="display:none">
+<label style="font-size:.85rem;color:var(--muted);display:block;margin-bottom:4px">PDF File</label>
+<input id="doc-file-pdf" type="file" accept=".pdf" style="font-size:.85rem;color:var(--text)">
+</div>
+
+<div id="input-docx" class="doc-input" style="display:none">
+<label style="font-size:.85rem;color:var(--muted);display:block;margin-bottom:4px">DOCX File</label>
+<input id="doc-file-docx" type="file" accept=".docx" style="font-size:.85rem;color:var(--text)">
+</div>
+
+<div style="display:flex;gap:8px;align-items:center;margin-top:12px">
+<button onclick="uploadDoc()" id="upload-btn" style="padding:6px 16px;border-radius:6px;border:none;background:var(--pass);color:#fff;cursor:pointer;font-size:.85rem;font-weight:600">Upload</button>
+<button onclick="toggleUpload()" style="padding:6px 16px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:.85rem">Cancel</button>
+<span id="upload-status" style="font-size:.85rem"></span>
+</div>
+</div>
+
+{# Document List #}
+{% if documents %}
+{% for doc in documents %}
+<div class="doc-card" id="doc-{{ doc.id }}" style="cursor:pointer" onclick="toggleDocDetail('{{ doc.id }}')">
+<div class="doc-info">
+<div>
+<span class="doc-type-badge">{{ doc.doc_type|upper }}</span>
+<strong>{{ doc.title }}</strong>
+</div>
+<div style="font-size:.8rem;color:var(--muted);margin-top:4px">
+Uploaded: {{ doc.uploaded_at[:19] }} | {{ doc.text_length }} characters extracted
+</div>
+</div>
+<button onclick="event.stopPropagation();deleteDoc('{{ doc.id }}')" style="padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--fail);cursor:pointer;font-size:.8rem">Delete</button>
+</div>
+<div id="detail-{{ doc.id }}" style="display:none;margin-bottom:12px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:0 0 8px 8px;margin-top:-12px"></div>
+{% endfor %}
+{% else %}
+<div class="empty" style="margin-top:24px">
+<p>No governance documents uploaded yet.</p>
+<p style="font-size:.85rem;margin-top:8px;color:var(--muted)">Upload your ISMS policies, data classification guidelines, and privacy documents to enhance AI risk assessments.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+var currentDocType = 'text';
+
+function toggleUpload() {
+  var form = document.getElementById('upload-form');
+  var isHidden = getComputedStyle(form).display === 'none';
+  form.style.display = isHidden ? 'block' : 'none';
+}
+
+function switchDocType(type) {
+  currentDocType = type;
+  document.querySelectorAll('.type-tab').forEach(function(t) { t.classList.remove('active'); });
+  event.target.classList.add('active');
+  document.querySelectorAll('.doc-input').forEach(function(d) { d.style.display = 'none'; });
+  document.getElementById('input-' + type).style.display = '';
+}
+
+function uploadDoc() {
+  var title = document.getElementById('doc-title').value.trim();
+  var btn = document.getElementById('upload-btn');
+  var status = document.getElementById('upload-status');
+
+  if (!title) {
+    status.innerHTML = '<span style="color:var(--fail)">Title is required</span>';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Uploading...';
+
+  var formData = new FormData();
+  formData.append('title', title);
+  formData.append('doc_type', currentDocType);
+
+  if (currentDocType === 'text') {
+    formData.append('content', document.getElementById('doc-content').value);
+  } else if (currentDocType === 'url') {
+    formData.append('url', document.getElementById('doc-url').value);
+  } else if (currentDocType === 'pdf') {
+    var pdfFile = document.getElementById('doc-file-pdf').files[0];
+    if (!pdfFile) { status.innerHTML = '<span style="color:var(--fail)">Select a PDF file</span>'; btn.disabled = false; btn.textContent = 'Upload'; return; }
+    formData.append('file', pdfFile);
+  } else if (currentDocType === 'docx') {
+    var docxFile = document.getElementById('doc-file-docx').files[0];
+    if (!docxFile) { status.innerHTML = '<span style="color:var(--fail)">Select a DOCX file</span>'; btn.disabled = false; btn.textContent = 'Upload'; return; }
+    formData.append('file', docxFile);
+  }
+
+  fetch('/api/governance', {
+    method: 'POST',
+    body: formData
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.id) {
+      status.innerHTML = '<span style="color:var(--pass)">&#10003; Uploaded (' + data.text_length + ' chars extracted)</span>';
+      setTimeout(function() { window.location.reload(); }, 1000);
+    } else {
+      status.innerHTML = '<span style="color:var(--fail)">' + (data.detail || 'Error') + '</span>';
+      btn.disabled = false;
+      btn.textContent = 'Upload';
+    }
+  })
+  .catch(function(e) {
+    status.innerHTML = '<span style="color:var(--fail)">' + e.message + '</span>';
+    btn.disabled = false;
+    btn.textContent = 'Upload';
+  });
+}
+
+function deleteDoc(docId) {
+  if (!confirm('Delete this document?')) return;
+  fetch('/api/governance/' + docId, {method: 'DELETE'})
+    .then(function() {
+      var el = document.getElementById('doc-' + docId);
+      if (el) el.remove();
+      var det = document.getElementById('detail-' + docId);
+      if (det) det.remove();
+    });
+}
+
+var loadedDetails = {};
+
+function toggleDocDetail(docId) {
+  var det = document.getElementById('detail-' + docId);
+  if (det.style.display !== 'none') {
+    det.style.display = 'none';
+    return;
+  }
+  det.style.display = 'block';
+  if (loadedDetails[docId]) return;
+  det.innerHTML = '<div style="color:var(--muted);font-size:.85rem">Loading...</div>';
+  fetch('/api/governance/' + docId)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      loadedDetails[docId] = true;
+      renderDetail(docId, data);
+    })
+    .catch(function(e) {
+      det.innerHTML = '<span style="color:var(--fail)">Error: ' + e.message + '</span>';
+    });
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function renderDetail(docId, data) {
+  var det = document.getElementById('detail-' + docId);
+  var html = '';
+
+  // AI Summary
+  html += '<div style="margin-bottom:16px">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+  html += '<h4 style="font-size:.95rem">AI Summary</h4>';
+  html += '<div style="display:flex;gap:8px">';
+  html += '<button onclick="toggleEdit(\'' + docId + '\')" id="edit-toggle-' + docId + '" style="padding:3px 10px;border-radius:4px;border:1px solid var(--info);background:rgba(59,130,246,.1);color:var(--info);cursor:pointer;font-size:.8rem;font-weight:600">&#9998; Edit</button>';
+  html += '<button onclick="resummarize(\'' + docId + '\')" id="resum-btn-' + docId + '" style="padding:3px 10px;border-radius:4px;border:1px solid var(--warn);background:rgba(245,158,11,.1);color:var(--warn);cursor:pointer;font-size:.8rem;font-weight:600">&#8635; Re-summarize</button>';
+  html += '</div></div>';
+
+  // Display mode
+  html += '<div id="display-' + docId + '">';
+  html += '<div style="padding:10px;background:var(--bg);border-radius:6px;border:1px solid var(--border);font-size:.85rem;line-height:1.6">' + esc(data.summary || 'No summary available') + '</div>';
+
+  if (data.data_classification_rules && data.data_classification_rules.length) {
+    html += '<h5 style="font-size:.85rem;margin:12px 0 6px;color:var(--info)">Data Classification Rules</h5>';
+    data.data_classification_rules.forEach(function(r) {
+      html += '<div style="font-size:.85rem;padding:4px 0;border-bottom:1px solid var(--border)">&#8226; ' + esc(r) + '</div>';
+    });
+  }
+  if (data.compliance_scope_rules && data.compliance_scope_rules.length) {
+    html += '<h5 style="font-size:.85rem;margin:12px 0 6px;color:var(--pass)">Compliance Scope Rules</h5>';
+    data.compliance_scope_rules.forEach(function(r) {
+      html += '<div style="font-size:.85rem;padding:4px 0;border-bottom:1px solid var(--border)">&#8226; ' + esc(r) + '</div>';
+    });
+  }
+  if (data.security_policies && data.security_policies.length) {
+    html += '<h5 style="font-size:.85rem;margin:12px 0 6px;color:var(--warn)">Security Policies</h5>';
+    data.security_policies.forEach(function(r) {
+      html += '<div style="font-size:.85rem;padding:4px 0;border-bottom:1px solid var(--border)">&#8226; ' + esc(r) + '</div>';
+    });
+  }
+  html += '</div>';
+
+  // Edit mode (hidden)
+  html += '<div id="edit-' + docId + '" style="display:none">';
+  html += '<label style="font-size:.85rem;color:var(--muted)">Summary</label>';
+  html += '<textarea id="edit-summary-' + docId + '" rows="3" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:.85rem;font-family:inherit;resize:vertical;margin-bottom:8px">' + esc(data.summary || '') + '</textarea>';
+  html += '<label style="font-size:.85rem;color:var(--muted)">Data Classification Rules (one per line)</label>';
+  html += '<textarea id="edit-dcr-' + docId + '" rows="3" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:.85rem;font-family:inherit;resize:vertical;margin-bottom:8px">' + (data.data_classification_rules || []).join('\n') + '</textarea>';
+  html += '<label style="font-size:.85rem;color:var(--muted)">Compliance Scope Rules (one per line)</label>';
+  html += '<textarea id="edit-csr-' + docId + '" rows="3" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:.85rem;font-family:inherit;resize:vertical;margin-bottom:8px">' + (data.compliance_scope_rules || []).join('\n') + '</textarea>';
+  html += '<label style="font-size:.85rem;color:var(--muted)">Security Policies (one per line)</label>';
+  html += '<textarea id="edit-sp-' + docId + '" rows="3" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:.85rem;font-family:inherit;resize:vertical;margin-bottom:8px">' + (data.security_policies || []).join('\n') + '</textarea>';
+  html += '<div style="display:flex;gap:8px;align-items:center">';
+  html += '<button onclick="saveDocEdit(\'' + docId + '\')" style="padding:4px 12px;border-radius:4px;border:none;background:var(--pass);color:#fff;cursor:pointer;font-size:.85rem">Save</button>';
+  html += '<button onclick="toggleEdit(\'' + docId + '\')" style="padding:4px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:.85rem">Cancel</button>';
+  html += '<span id="edit-status-' + docId + '" style="font-size:.85rem"></span>';
+  html += '</div></div>';
+  html += '</div>';
+
+  // Source text (collapsed)
+  html += '<details style="margin-top:12px">';
+  html += '<summary style="font-size:.85rem;color:var(--muted);cursor:pointer">Source Text (' + data.text.length + ' characters)</summary>';
+  html += '<pre style="margin-top:8px;padding:10px;background:var(--bg);border-radius:6px;border:1px solid var(--border);font-size:.8rem;max-height:300px;overflow-y:auto;white-space:pre-wrap;word-break:break-word">' + esc(data.text) + '</pre>';
+  html += '</details>';
+
+  det.innerHTML = html;
+}
+
+function toggleEdit(docId) {
+  var display = document.getElementById('display-' + docId);
+  var edit = document.getElementById('edit-' + docId);
+  if (edit.style.display === 'none') {
+    edit.style.display = '';
+    display.style.display = 'none';
+  } else {
+    edit.style.display = 'none';
+    display.style.display = '';
+  }
+}
+
+function saveDocEdit(docId) {
+  var summary = document.getElementById('edit-summary-' + docId).value;
+  var dcr = document.getElementById('edit-dcr-' + docId).value.split('\n').filter(function(l) { return l.trim(); });
+  var csr = document.getElementById('edit-csr-' + docId).value.split('\n').filter(function(l) { return l.trim(); });
+  var sp = document.getElementById('edit-sp-' + docId).value.split('\n').filter(function(l) { return l.trim(); });
+  var status = document.getElementById('edit-status-' + docId);
+
+  fetch('/api/governance/' + docId, {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      summary: summary,
+      data_classification_rules: dcr,
+      compliance_scope_rules: csr,
+      security_policies: sp
+    })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function() {
+    status.innerHTML = '<span style="color:var(--pass)">&#10003; Saved</span>';
+    loadedDetails[docId] = false;
+    setTimeout(function() {
+      toggleEdit(docId);
+      toggleDocDetail(docId);
+      toggleDocDetail(docId);
+    }, 500);
+  })
+  .catch(function(e) {
+    status.innerHTML = '<span style="color:var(--fail)">Error</span>';
+  });
+}
+
+function resummarize(docId) {
+  var btn = document.getElementById('resum-btn-' + docId);
+  btn.disabled = true;
+  btn.textContent = 'Analyzing...';
+  fetch('/api/governance/' + docId + '/resummarize', {method: 'POST'})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      btn.innerHTML = '&#8635; Re-summarize';
+      btn.disabled = false;
+      loadedDetails[docId] = false;
+      toggleDocDetail(docId);
+      toggleDocDetail(docId);
+    })
+    .catch(function(e) {
+      btn.innerHTML = '&#8635; Re-summarize';
+      btn.disabled = false;
+    });
+}
+</script>
+{% endblock %}

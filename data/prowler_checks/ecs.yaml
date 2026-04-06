@@ -1,0 +1,197 @@
+- check_id: ecs_task_definition_no_root
+  title: ECS Task Definition Not Running as Root
+  description: Ensure ECS task definition containers do not run as root user
+  severity: HIGH
+  resource_types:
+  - aws_ecs_task_definition
+  detection_logic:
+    field_path: container_definitions
+    operator: not_contains
+    expected_value: '"user":"root"'
+  remediation: Set a non-root user in the container definition or task definition
+  compliance_mappings:
+    PCI_DSS:
+    - 2.2.4
+    - 7.1.1
+    ISO_27001:
+    - A.9.4.1
+    - A.14.2.5
+    ISO_27701:
+    - 6.6.2.1
+    SOC_2:
+    - CC6.1
+    - CC6.3
+    GDPR:
+    - Art.32
+    ISMS_P:
+    - 2.6.1
+    - 2.6.7
+  attack_scenarios:
+  - technique: Container Escape via Root Privileges
+    description: >
+      An attacker exploits a vulnerability in the containerized application
+      and, running as root, escapes the container namespace to access the
+      host. Root privileges enable mounting host filesystems and accessing
+      the EC2 instance metadata service.
+    mitre_tactic: "Privilege Escalation (TA0004)"
+    impact: >
+      Container escape, host-level access, ability to steal IAM credentials
+      from the instance metadata service, lateral movement to other containers.
+    threat_source: ADVERSARIAL
+- check_id: ecs_task_definition_logging
+  title: ECS Task Definition Logging Configured
+  description: Ensure ECS task definition has container logging configured
+  severity: MODERATE
+  resource_types:
+  - aws_ecs_task_definition
+  detection_logic:
+    field_path: container_definitions
+    operator: contains
+    expected_value: logConfiguration
+  remediation: Configure logConfiguration in container definitions with awslogs driver
+  compliance_mappings:
+    PCI_DSS:
+    - '10.2'
+    - '10.3'
+    ISO_27001:
+    - A.12.4.1
+    ISO_27701:
+    - 6.9.4.1
+    SOC_2:
+    - CC7.2
+    GDPR:
+    - Art.30
+    ISMS_P:
+    - 2.9.1
+    - 2.9.3
+  attack_scenarios:
+  - technique: Undetected Container Compromise
+    description: >
+      Without container logging, an attacker compromises a container and
+      performs malicious operations without generating centralized audit
+      trails. Incident response teams have no visibility into container
+      activity or the scope of compromise.
+    mitre_tactic: "Defense Evasion (TA0005)"
+    impact: >
+      No visibility into container activity, inability to detect compromise,
+      delayed incident response, loss of forensic evidence.
+    threat_source: ADVERSARIAL
+- check_id: ecs_cluster_container_insights
+  title: ECS Cluster Container Insights Enabled
+  description: Ensure ECS cluster has Container Insights enabled for monitoring
+  severity: MODERATE
+  resource_types:
+  - aws_ecs_cluster
+  detection_logic:
+    field_path: setting
+    operator: contains
+    expected_value: containerInsights
+  remediation: Enable Container Insights in the ECS cluster settings
+  compliance_mappings:
+    PCI_DSS:
+    - '10.2'
+    ISO_27001:
+    - A.12.4.1
+    - A.12.1.3
+    ISO_27701:
+    - 6.9.4.1
+    SOC_2:
+    - CC7.2
+    - CC7.3
+    GDPR:
+    - Art.30
+    ISMS_P:
+    - 2.9.1
+    - 2.11.1
+  attack_scenarios:
+  - technique: Cryptojacking Without Performance Monitoring
+    description: >
+      An attacker deploys cryptocurrency mining containers on the ECS cluster.
+      Without Container Insights, abnormal CPU and memory usage patterns go
+      undetected, allowing the attacker to consume compute resources
+      indefinitely.
+    mitre_tactic: "Impact (TA0040)"
+    impact: >
+      Undetected resource abuse, inflated AWS costs, degraded performance
+      for legitimate workloads, potential service disruption.
+    threat_source: ADVERSARIAL
+- check_id: ecs_service_assign_public_ip
+  title: ECS Service No Public IP Assignment
+  description: Ensure ECS Fargate tasks do not have public IPs assigned
+  severity: CRITICAL
+  resource_types:
+  - aws_ecs_service
+  detection_logic:
+    field_path: network_configuration.0.assign_public_ip
+    operator: equals
+    expected_value: false
+  remediation: Set assign_public_ip to false in the ECS service network configuration
+  compliance_mappings:
+    PCI_DSS:
+    - 1.2.1
+    - 1.3.1
+    ISO_27001:
+    - A.13.1.1
+    ISO_27701:
+    - 6.10.1.1
+    SOC_2:
+    - CC6.1
+    - CC6.6
+    GDPR:
+    - Art.32
+    - Art.25
+    ISMS_P:
+    - 2.8.1
+    - 2.8.2
+  attack_scenarios:
+  - technique: Direct Container Service Exploitation
+    description: >
+      An ECS task with a public IP is directly reachable from the internet.
+      An attacker scans the IP, discovers exposed container ports, and
+      exploits application vulnerabilities without traversing any network
+      security controls like a load balancer or WAF.
+    mitre_tactic: "Initial Access (TA0001)"
+    impact: >
+      Direct exploitation of containerized services, bypassing edge
+      security controls, unauthorized access to application and data.
+    threat_source: ADVERSARIAL
+- check_id: eks_cluster_encryption
+  title: EKS Cluster Secrets Encryption
+  description: Ensure EKS cluster has envelope encryption enabled for Kubernetes secrets
+  severity: HIGH
+  resource_types:
+  - aws_eks_cluster
+  detection_logic:
+    field_path: encryption_config.0.resources
+    operator: exists
+  remediation: Configure encryption_config with a KMS key to encrypt Kubernetes secrets
+  compliance_mappings:
+    PCI_DSS:
+    - '3.4'
+    - 3.4.1
+    ISO_27001:
+    - A.10.1.1
+    - A.10.1.2
+    ISO_27701:
+    - 6.7.1.1
+    SOC_2:
+    - CC6.1
+    - CC6.7
+    GDPR:
+    - Art.32
+    - Art.25
+    ISMS_P:
+    - 2.5.1
+    - 2.7.1
+  attack_scenarios:
+  - technique: Kubernetes Secret Extraction from etcd
+    description: >
+      An attacker with access to the EKS control plane or etcd backups
+      extracts Kubernetes secrets stored in plaintext. Without envelope
+      encryption, database credentials, API keys, and TLS certificates
+      are readable directly from etcd storage.
+    mitre_tactic: "Credential Access (TA0006)"
+    impact: >
+      Exposure of all Kubernetes secrets including database passwords,
+      service account tokens, and TLS private keys.
+    threat_source: ADVERSARIAL

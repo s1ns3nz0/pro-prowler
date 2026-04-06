@@ -1,0 +1,131 @@
+name: "Pro-Prowler Risk Assessment"
+description: "Run NIST SP 800-30 IaC risk assessment on Terraform plans"
+branding:
+  icon: "shield"
+  color: "green"
+
+inputs:
+  plan-file:
+    description: "Path to Terraform plan JSON file"
+    required: true
+  output-dir:
+    description: "Directory for HTML/JSON reports"
+    required: false
+    default: "./pro-prowler-reports"
+  threshold:
+    description: "Quality score threshold (0-100)"
+    required: false
+    default: "60"
+  server:
+    description: "Pro-Prowler server URL to push results (optional)"
+    required: false
+    default: ""
+  context:
+    description: "Enable AI context analysis (requires ANTHROPIC_API_KEY)"
+    required: false
+    default: "false"
+  formats:
+    description: "Output formats (comma-separated: html,json,xml)"
+    required: false
+    default: "html,json"
+
+outputs:
+  score:
+    description: "Quality score (0-100)"
+    value: ${{ steps.assess.outputs.score }}
+  grade:
+    description: "Letter grade (A-F)"
+    value: ${{ steps.assess.outputs.grade }}
+  gate:
+    description: "Gate recommendation (pass/warn/block)"
+    value: ${{ steps.assess.outputs.gate }}
+  finding-count:
+    description: "Total number of findings"
+    value: ${{ steps.assess.outputs.finding_count }}
+  critical-count:
+    description: "Number of critical findings"
+    value: ${{ steps.assess.outputs.critical_count }}
+  report-path:
+    description: "Path to the HTML report"
+    value: ${{ steps.assess.outputs.report_path }}
+  snapshot-id:
+    description: "Snapshot ID on the server (if --server used)"
+    value: ${{ steps.assess.outputs.snapshot_id }}
+  dashboard-url:
+    description: "Dashboard URL for the snapshot (if --server used)"
+    value: ${{ steps.assess.outputs.dashboard_url }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Pro-Prowler
+      shell: bash
+      run: pip install pro-prowler
+
+    - name: Run Assessment
+      id: assess
+      shell: bash
+      run: |
+        ARGS="${{ inputs.plan-file }} -o ${{ inputs.output-dir }} --threshold ${{ inputs.threshold }}"
+
+        # Formats
+        IFS=',' read -ra FMTS <<< "${{ inputs.formats }}"
+        for fmt in "${FMTS[@]}"; do
+          ARGS="$ARGS -f $fmt"
+        done
+
+        # Context analysis
+        if [ "${{ inputs.context }}" != "true" ]; then
+          ARGS="$ARGS --no-context"
+        fi
+
+        # Server push
+        if [ -n "${{ inputs.server }}" ]; then
+          ARGS="$ARGS --server ${{ inputs.server }}"
+          ARGS="$ARGS --repository ${{ github.repository }}"
+          ARGS="$ARGS --commit ${{ github.sha }}"
+        fi
+
+        # Run and capture output
+        set +e
+        OUTPUT=$(pro-prowler assess $ARGS 2>&1)
+        EXIT_CODE=$?
+        set -e
+
+        echo "$OUTPUT"
+
+        # Parse outputs
+        SCORE=$(echo "$OUTPUT" | grep "Quality Score:" | grep -o '[0-9]*/100' | cut -d/ -f1)
+        GRADE=$(echo "$OUTPUT" | grep "Quality Score:" | grep -o 'Grade [A-F]' | cut -d' ' -f2)
+        GATE="pass"
+        if [ "$EXIT_CODE" -ne 0 ]; then
+          GATE="block"
+        fi
+
+        FINDINGS=$(echo "$OUTPUT" | grep "Findings:" | head -1)
+        CRITICAL=$(echo "$FINDINGS" | grep -o '[0-9]* CRITICAL' | cut -d' ' -f1 || echo "0")
+        TOTAL=$(echo "$FINDINGS" | grep -oE '[0-9]+' | head -1 || echo "0")
+
+        SNAPSHOT_ID=$(echo "$OUTPUT" | grep "Snapshot:" | awk '{print $2}')
+        DASHBOARD=$(echo "$OUTPUT" | grep "Dashboard:" | awk '{print $2}')
+        REPORT_PATH="${{ inputs.output-dir }}/dashboard.html"
+
+        echo "score=${SCORE:-0}" >> $GITHUB_OUTPUT
+        echo "grade=${GRADE:-F}" >> $GITHUB_OUTPUT
+        echo "gate=${GATE}" >> $GITHUB_OUTPUT
+        echo "finding_count=${TOTAL:-0}" >> $GITHUB_OUTPUT
+        echo "critical_count=${CRITICAL:-0}" >> $GITHUB_OUTPUT
+        echo "report_path=${REPORT_PATH}" >> $GITHUB_OUTPUT
+        echo "snapshot_id=${SNAPSHOT_ID}" >> $GITHUB_OUTPUT
+        echo "dashboard_url=${DASHBOARD}" >> $GITHUB_OUTPUT
+
+        # Step summary
+        echo "## Pro-Prowler Risk Assessment" >> $GITHUB_STEP_SUMMARY
+        echo "- **Score**: ${SCORE:-0}/100 (Grade ${GRADE:-F})" >> $GITHUB_STEP_SUMMARY
+        echo "- **Gate**: ${GATE}" >> $GITHUB_STEP_SUMMARY
+        if [ -n "$FINDINGS" ]; then
+          echo "- **Findings**: $FINDINGS" >> $GITHUB_STEP_SUMMARY
+        fi
+        if [ -n "$DASHBOARD" ]; then
+          echo "- [View Dashboard](${DASHBOARD})" >> $GITHUB_STEP_SUMMARY
+        fi

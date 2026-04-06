@@ -1,0 +1,107 @@
+{% extends "base.html.j2" %}
+{% block title %}Comparison — Pro-Prowler{% endblock %}
+{% block content %}
+<div style="margin-bottom:16px">
+<a href="/dashboard" style="font-size:.85rem;color:var(--muted)">&larr; Back to dashboard</a>
+</div>
+
+<h2 style="font-size:1.1rem;margin-bottom:24px">Assessment Comparison</h2>
+
+{# Score Comparison #}
+<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:24px;align-items:center;margin-bottom:32px">
+<div class="card" style="text-align:center">
+<div class="card-label">Previous</div>
+<div class="grade-circle" style="border:3px solid var(--grade-{{ comparison.old_grade|lower }});margin:8px auto;width:60px;height:60px;font-size:1.5rem">{{ comparison.old_grade }}</div>
+<div style="font-size:1.2rem;font-weight:700">{{ comparison.old_score }}/100</div>
+<div style="font-size:.8rem;color:var(--muted);margin-top:4px">{{ old_id[:8] }}</div>
+</div>
+<div style="text-align:center">
+<div style="font-size:2rem;font-weight:800" class="{% if comparison.score_delta > 0 %}delta-pos{% elif comparison.score_delta < 0 %}delta-neg{% else %}delta-zero{% endif %}">
+{% if comparison.score_delta > 0 %}+{% endif %}{{ comparison.score_delta }}
+</div>
+<div style="font-size:.8rem;color:var(--muted)">score delta</div>
+</div>
+<div class="card" style="text-align:center">
+<div class="card-label">Current</div>
+<div class="grade-circle" style="border:3px solid var(--grade-{{ comparison.new_grade|lower }});margin:8px auto;width:60px;height:60px;font-size:1.5rem">{{ comparison.new_grade }}</div>
+<div style="font-size:1.2rem;font-weight:700">{{ comparison.new_score }}/100</div>
+<div style="font-size:.8rem;color:var(--muted);margin-top:4px">{{ new_id[:8] }}</div>
+</div>
+</div>
+
+{# Finding Changes #}
+{% if comparison.new_findings %}
+<h3 style="font-size:.95rem;margin-bottom:12px"><span class="tag tag-new">NEW</span> {{ comparison.new_findings|length }} New Findings</h3>
+<table style="margin-bottom:24px">
+<thead><tr><th>Severity</th><th>Resource</th><th>Check</th><th>Title</th></tr></thead>
+<tbody>
+{% for f in comparison.new_findings %}
+<tr>
+<td><span class="severity-badge severity-{{ f.severity }}">{{ f.severity }}</span></td>
+<td style="font-family:monospace;font-size:.85rem">{{ f.resource_address }}</td>
+<td style="font-size:.85rem">{{ f.check_id }}</td>
+<td>{{ f.title }}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% endif %}
+
+{% if comparison.resolved_findings %}
+<h3 style="font-size:.95rem;margin-bottom:12px"><span class="tag tag-resolved">RESOLVED</span> {{ comparison.resolved_findings|length }} Resolved Findings</h3>
+<table style="margin-bottom:24px">
+<thead><tr><th>Severity</th><th>Resource</th><th>Check</th><th>Title</th></tr></thead>
+<tbody>
+{% for f in comparison.resolved_findings %}
+<tr>
+<td><span class="severity-badge severity-{{ f.severity }}">{{ f.severity }}</span></td>
+<td style="font-family:monospace;font-size:.85rem">{{ f.resource_address }}</td>
+<td style="font-size:.85rem">{{ f.check_id }}</td>
+<td>{{ f.title }}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% endif %}
+
+{% if comparison.persistent_findings %}
+<h3 style="font-size:.95rem;margin-bottom:12px"><span class="tag tag-persistent">PERSISTENT</span> {{ comparison.persistent_findings|length }} Unchanged Findings</h3>
+<table style="margin-bottom:24px">
+<thead><tr><th>Severity</th><th>Resource</th><th>Check</th><th>Title</th></tr></thead>
+<tbody>
+{% for f in comparison.persistent_findings %}
+<tr>
+<td><span class="severity-badge severity-{{ f.severity }}">{{ f.severity }}</span></td>
+<td style="font-family:monospace;font-size:.85rem">{{ f.resource_address }}</td>
+<td style="font-size:.85rem">{{ f.check_id }}</td>
+<td>{{ f.title }}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% endif %}
+
+{# Compliance Deltas #}
+{% if comparison.compliance_deltas %}
+<h3 style="font-size:.95rem;margin-bottom:12px">Compliance Coverage Changes</h3>
+<table>
+<thead><tr><th>Framework</th><th>Previous</th><th>Current</th><th>Delta</th></tr></thead>
+<tbody>
+{% for d in comparison.compliance_deltas %}
+<tr>
+<td>{{ d.framework }}</td>
+<td>{{ d.old_coverage }}%</td>
+<td>{{ d.new_coverage }}%</td>
+<td class="{% if d.delta > 0 %}delta-pos{% elif d.delta < 0 %}delta-neg{% else %}delta-zero{% endif %}">
+{% if d.delta > 0 %}+{% endif %}{{ d.delta }}%
+</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% endif %}
+
+{% if not comparison.new_findings and not comparison.resolved_findings and not comparison.persistent_findings %}
+<div class="empty">Both assessments have identical results.</div>
+{% endif %}
+{% endblock %}

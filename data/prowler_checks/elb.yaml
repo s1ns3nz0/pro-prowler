@@ -1,0 +1,194 @@
+- check_id: elb_https_listener
+  title: ELB HTTPS Listener Configured
+  description: Ensure load balancer has an HTTPS listener configured
+  severity: CRITICAL
+  resource_types:
+  - aws_lb_listener
+  detection_logic:
+    field_path: protocol
+    operator: equals
+    expected_value: HTTPS
+  remediation: Configure an HTTPS listener with a valid SSL certificate
+  compliance_mappings:
+    PCI_DSS:
+    - '4.1'
+    - 4.1.1
+    ISO_27001:
+    - A.10.1.1
+    - A.13.1.1
+    ISO_27701:
+    - 6.7.1.1
+    SOC_2:
+    - CC6.1
+    - CC6.7
+    GDPR:
+    - Art.32
+    - Art.25
+    ISMS_P:
+    - 2.5.1
+    - 2.7.1
+  attack_scenarios:
+  - technique: Man-in-the-Middle Traffic Interception
+    description: >
+      An attacker on the network path between clients and the load balancer
+      intercepts unencrypted HTTP traffic. They capture session tokens,
+      credentials, and sensitive data transmitted in plaintext.
+    mitre_tactic: "Credential Access (TA0006)"
+    impact: >
+      Session hijacking, credential theft, exposure of sensitive data in
+      transit, regulatory violations for encryption requirements.
+    threat_source: ADVERSARIAL
+- check_id: elb_access_logging
+  title: ELB Access Logging Enabled
+  description: Ensure load balancer has access logging enabled
+  severity: MODERATE
+  resource_types:
+  - aws_lb
+  detection_logic:
+    field_path: access_logs.0.enabled
+    operator: equals
+    expected_value: true
+  remediation: Enable access logging on the load balancer with an S3 bucket destination
+  compliance_mappings:
+    PCI_DSS:
+    - '10.2'
+    - '10.3'
+    ISO_27001:
+    - A.12.4.1
+    ISO_27701:
+    - 6.9.4.1
+    SOC_2:
+    - CC7.2
+    GDPR:
+    - Art.30
+    - Art.33
+    ISMS_P:
+    - 2.9.1
+    - 2.9.3
+  attack_scenarios:
+  - technique: Undetected Web Application Attacks
+    description: >
+      Without access logging, an attacker performs SQL injection, path
+      traversal, and credential stuffing attacks without leaving audit
+      trails. Incident response teams cannot reconstruct attack patterns
+      or identify compromised endpoints.
+    mitre_tactic: "Defense Evasion (TA0005)"
+    impact: >
+      Inability to detect web attacks, delayed incident response, loss
+      of forensic evidence for compliance audits.
+    threat_source: ADVERSARIAL
+- check_id: elb_deletion_protection
+  title: ELB Deletion Protection Enabled
+  description: Ensure load balancer has deletion protection enabled
+  severity: MODERATE
+  resource_types:
+  - aws_lb
+  detection_logic:
+    field_path: enable_deletion_protection
+    operator: equals
+    expected_value: true
+  remediation: Enable deletion protection on the load balancer
+  compliance_mappings:
+    PCI_DSS:
+    - '10.7'
+    ISO_27001:
+    - A.17.1.1
+    - A.12.1.1
+    ISO_27701:
+    - 6.9.1.1
+    SOC_2:
+    - CC7.5
+    - A1.2
+    GDPR:
+    - Art.32
+    ISMS_P:
+    - 2.12.1
+  attack_scenarios:
+  - technique: Infrastructure Destruction via Resource Deletion
+    description: >
+      An attacker with IAM permissions deletes the load balancer, immediately
+      disrupting all traffic routing to backend services. Without deletion
+      protection, this is a single API call that causes widespread outage.
+    mitre_tactic: "Impact (TA0040)"
+    impact: >
+      Complete service disruption, loss of traffic routing, extended
+      downtime while recreating load balancer and DNS propagation.
+    threat_source: ADVERSARIAL
+- check_id: elb_waf_integration
+  title: ELB WAF Integration
+  description: Ensure ALB has an AWS WAF web ACL associated
+  severity: HIGH
+  resource_types:
+  - aws_lb
+  detection_logic:
+    field_path: web_acl_arn
+    operator: exists
+    sub_resource_type: aws_wafv2_web_acl_association
+    sub_resource_link_field: resource_arn
+  remediation: Associate an AWS WAF web ACL with the Application Load Balancer
+  compliance_mappings:
+    PCI_DSS:
+    - 6.5.1
+    - '6.6'
+    ISO_27001:
+    - A.13.1.1
+    - A.14.1.2
+    ISO_27701:
+    - 6.10.1.1
+    SOC_2:
+    - CC6.6
+    - CC7.2
+    GDPR:
+    - Art.32
+    ISMS_P:
+    - 2.8.1
+    - 2.10.1
+  attack_scenarios:
+  - technique: Web Application Exploitation without WAF Protection
+    description: >
+      Without WAF, an attacker directly exploits web vulnerabilities such as
+      SQL injection, XSS, and command injection against backend applications.
+      No request filtering or rate limiting exists at the edge.
+    mitre_tactic: "Initial Access (TA0001)"
+    impact: >
+      Unfiltered malicious requests reaching applications, successful
+      exploitation of web vulnerabilities, data breach.
+    threat_source: ADVERSARIAL
+- check_id: elb_ssl_policy
+  title: ELB Modern TLS Policy
+  description: Ensure load balancer uses a modern TLS security policy (TLS 1.2+)
+  severity: HIGH
+  resource_types:
+  - aws_lb_listener
+  detection_logic:
+    field_path: ssl_policy
+    operator: contains
+    expected_value: TLS-1-2
+  remediation: Set ssl_policy to ELBSecurityPolicy-TLS-1-2-2017-01 or newer
+  compliance_mappings:
+    PCI_DSS:
+    - '4.1'
+    - 4.1.1
+    ISO_27001:
+    - A.10.1.1
+    ISO_27701:
+    - 6.7.1.1
+    SOC_2:
+    - CC6.1
+    - CC6.7
+    GDPR:
+    - Art.32
+    ISMS_P:
+    - 2.5.1
+    - 2.5.2
+  attack_scenarios:
+  - technique: TLS Downgrade and Protocol Exploitation
+    description: >
+      An attacker forces a TLS downgrade to deprecated protocols like TLS 1.0
+      or 1.1, exploiting known vulnerabilities such as BEAST, POODLE, or
+      CRIME to decrypt traffic and steal sensitive data.
+    mitre_tactic: "Credential Access (TA0006)"
+    impact: >
+      Traffic decryption via protocol downgrade attacks, session token
+      theft, exposure of sensitive data in transit.
+    threat_source: ADVERSARIAL

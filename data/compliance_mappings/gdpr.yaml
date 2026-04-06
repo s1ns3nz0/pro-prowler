@@ -1,0 +1,16 @@
+framework: GDPR
+controls:
+  - control_id: "Art.5"
+    control_title: "Principles of processing (storage limitation, minimisation, integrity)"
+  - control_id: "Art.25"
+    control_title: "Data protection by design and by default"
+  - control_id: "Art.30"
+    control_title: "Records of processing activities"
+  - control_id: "Art.32"
+    control_title: "Security of processing"
+  - control_id: "Art.33"
+    control_title: "Notification of personal data breach"
+  - control_id: "Art.35"
+    control_title: "Data protection impact assessment"
+  - control_id: "Art.44"
+    control_title: "Transfers to third countries - general principle"

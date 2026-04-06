@@ -1,0 +1,1186 @@
+{% extends "base.html.j2" %}
+{% block title %}Snapshot {{ commit_hash[:8] }} — Pro-Prowler{% endblock %}
+{% block content %}
+<style>
+.service-group.collapsed .service-content{display:none}
+.service-group.collapsed .chevron{transform:rotate(-90deg)}
+.chevron{transition:transform .2s;display:inline-block}
+.resource-table{width:100%;border-collapse:collapse;margin-top:8px}
+.resource-table th,.resource-table td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)}
+.resource-table th{font-size:.75rem;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.resource-table tr.resource-row{cursor:pointer}
+.resource-table tr.resource-row:hover{background:var(--surface)}
+.resource-table tr.resource-row.active{background:rgba(59,130,246,.1);border-left:3px solid var(--info)}
+.detail-row td{padding:0 !important;border:none !important}
+.split-panel{display:grid;grid-template-columns:1fr 1fr;min-height:300px;border:1px solid var(--border);border-radius:0 0 8px 8px;overflow:hidden;margin-bottom:8px}
+.split-left{padding:16px;overflow-y:auto;max-height:500px;border-right:1px solid var(--border)}
+.split-right{padding:16px;overflow-y:auto;max-height:500px;background:var(--surface)}
+.split-right pre{font-size:.8rem;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+.split-right .hl{background:rgba(220,38,38,.15);color:var(--fail);padding:1px 4px;border-radius:2px}
+.ctx-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:600;margin-right:4px}
+.ctx-VERY_HIGH,.ctx-HIGH{background:rgba(220,38,38,.1);color:var(--fail)}
+.ctx-MODERATE{background:rgba(234,179,8,.1);color:var(--moderate)}
+.ctx-LOW,.ctx-VERY_LOW{background:rgba(59,130,246,.1);color:var(--info)}
+.check-pass{color:var(--pass);font-size:.85rem}
+.check-item{padding:4px 0;border-bottom:1px solid var(--border);font-size:.85rem}
+.hint{display:inline-block;width:14px;height:14px;border-radius:50%;background:var(--border);color:var(--muted);font-size:10px;text-align:center;line-height:14px;cursor:help;margin-left:4px;position:relative}
+.hint:hover::after{content:attr(data-tip);position:absolute;bottom:120%;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;font-size:.8rem;white-space:nowrap;z-index:10;font-weight:400;text-transform:none;letter-spacing:0}
+.fix-btn{padding:6px 14px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;font-size:.85rem;transition:all .2s}
+.fix-btn:hover{background:var(--info);border-color:var(--info);color:#fff}
+.fix-btn:disabled{opacity:.5;cursor:not-allowed}
+.fix-btn-all{background:var(--info);border-color:var(--info);color:#fff}
+.fix-btn-all:hover{opacity:.9}
+.fix-result{font-size:.85rem;margin-top:4px}
+.gate-pass{color:var(--pass)}.gate-warn{color:var(--warn)}.gate-block{color:var(--fail)}
+.layout-btn{padding:4px 12px;border:none;background:var(--surface);color:var(--muted);cursor:pointer;font-size:.8rem;transition:all .2s}
+.layout-btn.active{background:var(--info);color:#fff}
+.layout-btn:hover:not(.active){background:var(--border)}
+.action-btn-outline{padding:6px 14px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-size:.85rem;transition:all .2s}
+.action-btn-outline:hover{border-color:var(--muted)}
+.action-btn-outline:disabled{opacity:.5;cursor:not-allowed}
+.action-btn-primary{padding:6px 16px;border-radius:6px;border:none;background:var(--high);color:#fff;cursor:pointer;font-size:.85rem;font-weight:600;transition:all .2s}
+.action-btn-primary:hover{opacity:.9}
+.action-btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.review-resource{margin-bottom:12px}
+.review-resource-header{font-size:.9rem;font-weight:600;margin-bottom:6px;font-family:monospace}
+.review-item{display:flex;align-items:center;gap:12px;padding:8px 10px;border-bottom:1px solid var(--border);font-size:.85rem;flex-wrap:wrap}
+.review-item:last-child{border-bottom:none}
+.review-item:hover{background:rgba(255,255,255,.02)}
+.review-actions{display:flex;gap:2px}
+.review-actions{display:flex;gap:4px}
+.review-actions label{padding:4px 12px;cursor:pointer;border-radius:6px;font-size:.8rem;font-weight:600;border:2px solid var(--border);transition:all .15s;user-select:none}
+.review-actions label:hover{border-color:var(--muted)}
+.review-actions input{display:none}
+.review-actions input[value="fix"]:checked+span{background:var(--pass);color:#fff;border-color:var(--pass);padding:4px 12px;margin:-4px -12px;border-radius:6px;display:inline-block}
+.review-actions input[value="accept"]:checked+span{background:rgba(239,68,68,.15);color:var(--fail);border-color:var(--fail);padding:4px 12px;margin:-4px -12px;border-radius:6px;display:inline-block}
+.review-actions label:has(input[value="fix"]:not(:checked)) span{color:var(--pass)}
+.review-actions label:has(input[value="accept"]:not(:checked)) span{color:var(--muted)}
+.review-accept-input{animation:slideDown .2s ease}
+@keyframes slideDown{from{opacity:0;max-height:0}to{opacity:1;max-height:50px}}
+.chat-box{margin-top:16px;border-top:1px solid var(--border);padding-top:12px}
+.chat-input-row{display:flex;gap:8px}
+.chat-input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:.9rem;font-family:inherit}
+.chat-input:focus{outline:none;border-color:var(--info)}
+.chat-send{padding:8px 16px;border-radius:6px;border:none;background:var(--info);color:#fff;cursor:pointer;font-size:.85rem}
+.chat-send:disabled{opacity:.5;cursor:not-allowed}
+.chat-response{margin-top:12px;padding:12px;background:var(--bg);border-radius:6px;border:1px solid var(--border);font-size:.85rem;line-height:1.6;white-space:pre-wrap;word-break:break-word;max-height:300px;overflow-y:auto;display:none}
+.chat-response code{background:rgba(59,130,246,.1);padding:1px 4px;border-radius:3px;font-size:.8rem}
+.chat-response pre{background:var(--surface);padding:10px;border-radius:4px;overflow-x:auto;margin:8px 0}
+@media(max-width:768px){.split-panel{grid-template-columns:1fr}}
+</style>
+
+<div style="margin-bottom:16px">
+<a href="/dashboard" style="font-size:.85rem;color:var(--muted)">&larr; Back to projects</a>
+</div>
+
+{# Header #}
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;margin-bottom:24px">
+<div>
+<h2 style="font-size:1.1rem">{{ commit_hash[:8] if commit_hash else snapshot_id[:8] }}</h2>
+<div style="font-size:.85rem;color:var(--muted)">{{ repository }} | {{ meta.created_at[:19] }}</div>
+</div>
+<div style="display:flex;align-items:center;gap:16px">
+<div class="grade-circle" style="border:3px solid var(--grade-{{ meta.grade|lower }});width:60px;height:60px;font-size:1.5rem">{{ meta.grade }}</div>
+<div>
+<div style="font-size:1.5rem;font-weight:700">{{ meta.score }}/100</div>
+{% if comparison %}
+<div class="{% if comparison.score_delta > 0 %}delta-pos{% elif comparison.score_delta < 0 %}delta-neg{% else %}delta-zero{% endif %}" style="font-size:.85rem">
+{% if comparison.score_delta > 0 %}+{% endif %}{{ comparison.score_delta }} vs previous
+</div>
+{% endif %}
+</div>
+</div>
+<div>
+<input type="text" id="search" placeholder="Search resources, checks..."
+  style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);width:260px;font-size:.9rem"
+  oninput="filterResources(this.value)">
+</div>
+</div>
+
+{# Gate Status Banner #}
+{% if gate == 'block' or gate == 'warn' %}
+<div class="card" style="margin-bottom:16px;border-color:var(--warn)">
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+<div>
+<strong style="color:var(--warn)">&#9888; WARNING</strong>
+</div>
+<div style="font-size:.85rem;color:var(--muted)">
+{{ meta.finding_count }} findings | {{ meta.critical_count }} critical | {{ gap_analyses|length }} frameworks evaluated
+</div>
+</div>
+</div>
+{% else %}
+<div class="card" style="margin-bottom:16px;border-color:var(--pass)">
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+<div>
+<strong style="color:var(--pass)">&#10003; CLEAR</strong>
+</div>
+<div style="font-size:.85rem;color:var(--muted)">
+No compliance gaps detected | {{ gap_analyses|length }} frameworks evaluated
+</div>
+</div>
+</div>
+{% endif %}
+
+{# Comparison Banner #}
+{% if comparison %}
+<div class="card" style="margin-bottom:16px;border-color:{% if comparison.score_delta >= 0 %}var(--pass){% else %}var(--fail){% endif %}">
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+<div>
+<span class="tag tag-new">{{ comparison.new_findings|length }} new</span>
+<span class="tag tag-resolved">{{ comparison.resolved_findings|length }} resolved</span>
+<span class="tag tag-persistent">{{ comparison.persistent_findings|length }} persistent</span>
+</div>
+<a href="/dashboard/snapshots/{{ snapshot_id }}/compare/{{ comparison.old_snapshot_id }}" style="font-size:.85rem">Full comparison &rarr;</a>
+</div>
+</div>
+{% endif %}
+
+{# Unified toolbar: heading + layout toggle + actions #}
+{% set ns_total = namespace(f=0) %}
+{% for svc, res in service_groups.items() %}{% for r in res %}{% set ns_total.f = ns_total.f + r.findings|length %}{% endfor %}{% endfor %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px">
+<div style="display:flex;align-items:center;gap:12px">
+<h2 style="font-size:1rem;margin:0">Assessment Results</h2>
+<div style="display:flex;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden">
+<button id="view-service" class="layout-btn active" onclick="switchView('service')">By Service</button>
+<button id="view-compliance" class="layout-btn" onclick="switchView('compliance')">By Compliance</button>
+</div>
+</div>
+{% if ns_total.f > 0 %}
+<div style="display:flex;align-items:center;gap:8px">
+<button onclick="toggleReviewPanel()" id="review-btn" class="action-btn-outline">&#9881; Review &amp; Update</button>
+<span id="pr-status" style="font-size:.85rem"></span>
+</div>
+{% endif %}
+</div>
+
+{# Review Panel (hidden by default) #}
+<div id="review-panel" style="display:none;margin-bottom:20px;border:1px solid var(--border);border-radius:8px;background:var(--surface);padding:16px">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+<h3 style="font-size:1rem">Review Findings</h3>
+<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+<span id="review-summary" style="font-size:.85rem;color:var(--muted)"></span>
+<label style="font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:4px">PR target:
+<select id="review-target-branch" style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text);font-size:.85rem">
+{% for b in ['main','master','develop','staging'] %}
+<option value="{{ b }}" {{ 'selected' if b == default_branch }}>{{ b }}</option>
+{% endfor %}
+</select></label>
+<button onclick="submitReview()" id="submit-review-btn" class="action-btn-primary">&#8594; Create PR</button>
+</div>
+</div>
+<p style="font-size:.85rem;color:var(--muted);margin-bottom:12px">
+Selecting <strong style="color:var(--pass)">&#10003; Fixed</strong> will apply the corrected configuration to your Terraform code and include it in the PR.
+Selecting <strong style="color:var(--fail)">&#9888; Accept</strong> requires a justification — the risk will be documented in the audit trail.
+</p>
+<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+<span style="font-size:.8rem;color:var(--muted)">Filter:</span>
+<select id="filter-severity" onchange="applyReviewFilters()" style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:3px 8px;color:var(--text);font-size:.8rem">
+<option value="">All Severities</option>
+<option value="CRITICAL">CRITICAL</option>
+<option value="HIGH">HIGH</option>
+<option value="MODERATE">MODERATE</option>
+<option value="LOW">LOW</option>
+</select>
+<select id="filter-service" onchange="applyReviewFilters()" style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:3px 8px;color:var(--text);font-size:.8rem">
+<option value="">All Services</option>
+</select>
+<select id="filter-status" onchange="applyReviewFilters()" style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:3px 8px;color:var(--text);font-size:.8rem">
+<option value="">All Status</option>
+<option value="fix">Fixed</option>
+<option value="accept">Accepted</option>
+</select>
+<button onclick="clearReviewFilters()" style="padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:.8rem">Clear</button>
+</div>
+<div id="review-list"></div>
+</div>
+
+{# Service View (default) #}
+<div id="view-service-content">
+{% for service_name, resources in service_groups.items() %}
+{% set ns = namespace(total_findings=0) %}
+{% for res in resources %}{% set ns.total_findings = ns.total_findings + res.findings|length %}{% endfor %}
+
+<div class="service-group collapsed" data-service="{{ service_name }}">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)">
+<h3 style="font-size:1rem;cursor:pointer;user-select:none;flex:1" onclick="this.closest('.service-group').classList.toggle('collapsed')">
+<span class="chevron">&#9660;</span>
+{{ service_name }}
+<span style="font-size:.8rem;color:var(--muted);font-weight:400">({{ resources|length }} resources{% if ns.total_findings > 0 %}, {{ ns.total_findings }} findings{% endif %})</span>
+</h3>
+</div>
+
+<div class="service-content">
+<table class="resource-table">
+<thead>
+<tr>
+<th>Resource <span class="hint" data-tip="Terraform resource address and type">?</span></th>
+<th>Criticality <span class="hint" data-tip="Asset criticality based on business context (data sensitivity, compliance scope)">?</span></th>
+<th>Findings <span class="hint" data-tip="Number of failed Prowler checks on this resource">?</span></th>
+<th>Max Risk <span class="hint" data-tip="Highest risk score (1-25) among findings. Likelihood x Impact per NIST SP 800-30">?</span></th>
+<th>Status <span class="hint" data-tip="Worst severity among findings. PASS means all applicable checks passed">?</span></th>
+<th>Attack Path <span class="hint" data-tip="AI-generated chained attack scenario describing how findings could be exploited together">?</span></th>
+</tr>
+</thead>
+<tbody>
+{% for res in resources|sort(attribute='max_risk_score', reverse=True) %}
+<tr class="resource-row"
+    data-address="{{ res.address }}"
+    data-global-key="{{ service_name }}:{{ res.address }}"
+    onclick="toggleDetail(this, '{{ service_name }}', '{{ res.address }}')">
+<td>
+<code style="font-size:.85rem">{{ res.address }}</code>
+<div style="font-size:.75rem;color:var(--muted)">{{ res.resource_type }}</div>
+</td>
+<td><span class="ctx-badge ctx-{{ res.asset_criticality }}">{{ res.asset_criticality }}</span></td>
+<td>{% if res.finding_count > 0 %}<strong>{{ res.finding_count }}</strong>{% else %}<span style="color:var(--muted)">0</span>{% endif %}</td>
+<td>
+{% if res.max_risk_score > 0 %}
+<span class="severity-badge severity-{% if res.max_risk_score >= 16 %}CRITICAL{% elif res.max_risk_score >= 9 %}HIGH{% elif res.max_risk_score >= 4 %}MODERATE{% else %}LOW{% endif %}">{{ res.max_risk_score }}/25</span>
+{% else %}<span style="color:var(--pass);font-size:.85rem">0/25</span>{% endif %}
+</td>
+<td>
+{% if res.finding_count == 0 %}<span style="color:var(--pass)">&#10003; PASS</span>
+{% else %}
+{% set severities = res.findings|map(attribute='severity')|list %}
+{% if 'CRITICAL' in severities %}<span class="severity-badge severity-CRITICAL">CRITICAL</span>
+{% elif 'HIGH' in severities %}<span class="severity-badge severity-HIGH">HIGH</span>
+{% elif 'MODERATE' in severities %}<span class="severity-badge severity-MODERATE">MODERATE</span>
+{% else %}<span class="severity-badge severity-LOW">LOW</span>{% endif %}
+{% endif %}
+</td>
+<td style="font-size:.8rem;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+{% if res.attack_path %}{{ res.attack_path.risk_summary }}{% else %}-{% endif %}
+</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+</div>
+{% endfor %}
+
+{# Compliance Summary (in service view) #}
+{% if gap_analyses %}
+<h3 style="font-size:1rem;margin-top:32px;margin-bottom:16px">Compliance Coverage</h3>
+{% for ga in gap_analyses %}
+<div class="card" style="margin-bottom:12px">
+<div style="display:flex;justify-content:space-between"><span>{{ ga.framework }}</span><span style="font-weight:600;color:{% if ga.coverage >= 75 %}var(--pass){% elif ga.coverage >= 50 %}var(--warn){% else %}var(--fail){% endif %}">{{ ga.coverage }}%</span></div>
+<div class="bar" style="background:rgba(239,68,68,.15)"><div class="bar-fill {% if ga.coverage >= 75 %}pass{% elif ga.coverage >= 50 %}warn{% else %}fail{% endif %}" style="width:{% if ga.coverage > 0 %}{{ ga.coverage }}%{% else %}0%{% endif %}"></div></div>
+<div style="font-size:.8rem;color:var(--muted);margin-top:4px">{{ ga.passing }} pass / {{ ga.failing }} fail / {{ ga.unmapped }} unmapped</div>
+</div>
+{% endfor %}
+{% endif %}
+</div>{# end view-service-content #}
+
+{# Compliance View (hidden by default) #}
+<div id="view-compliance-content" style="display:none">
+{% for ga in gap_analyses %}
+<div class="service-group collapsed" data-compliance="{{ ga.framework }}">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer;user-select:none"
+  onclick="this.parentElement.classList.toggle('collapsed')">
+<h3 style="font-size:1rem">
+<span class="chevron">&#9660;</span>
+{{ ga.framework }}
+<span style="font-size:.8rem;font-weight:400;color:var(--muted)">({{ ga.coverage }}% coverage — {{ ga.passing }} pass / {{ ga.failing }} fail / {{ ga.unmapped }} unmapped)</span>
+</h3>
+</div>
+<div class="service-content">
+<div class="bar" style="margin:8px 0 16px">
+<div class="bar-fill {% if ga.coverage >= 75 %}pass{% elif ga.coverage >= 50 %}warn{% else %}fail{% endif %}" style="width:{{ ga.coverage }}%"></div>
+</div>
+<table class="resource-table">
+<thead><tr><th>Control</th><th>Title</th><th>Status</th><th>Findings</th></tr></thead>
+<tbody id="compliance-body-{{ ga.framework }}">
+</tbody>
+</table>
+</div>
+</div>
+{% endfor %}
+</div>{# end view-compliance-content #}
+
+<div style="margin-top:24px;font-size:.8rem;color:var(--muted)">Snapshot: {{ snapshot_id[:12] }} | {{ meta.created_at[:19] }}</div>
+
+<script id="resource-data" type="application/json">
+{{ resource_data_json | safe }}
+</script>
+<script id="compliance-data" type="application/json">
+{{ compliance_groups_json | safe }}
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script>
+var activeKey = null;
+const resourceData = JSON.parse(document.getElementById('resource-data').textContent);
+const complianceData = JSON.parse(document.getElementById('compliance-data').textContent);
+
+// Populate compliance tables on load
+Object.keys(complianceData).forEach(function(fw) {
+  var tbody = document.getElementById('compliance-body-' + fw);
+  if (!tbody) return;
+  var controls = complianceData[fw];
+  controls.forEach(function(ctrl) {
+    var tr = document.createElement('tr');
+    var statusClass = ctrl.status === 'PASS' ? 'status-PASS' : ctrl.status === 'FAIL' ? 'status-FAIL' : 'status-UNMAPPED';
+    tr.innerHTML = '<td style="font-family:monospace;font-size:.85rem">' + esc(ctrl.control_id) + '</td>' +
+      '<td>' + esc(ctrl.control_title) + '</td>' +
+      '<td><span class="' + statusClass + '">' + ctrl.status + '</span></td>' +
+      '<td>' + (ctrl.finding_count > 0 ? '<strong style="color:var(--fail)">' + ctrl.finding_count + '</strong>' : '<span style="color:var(--muted)">0</span>') + '</td>';
+    tbody.appendChild(tr);
+
+    // If has findings, add expandable detail with clickable resources
+    if (ctrl.findings && ctrl.findings.length > 0) {
+      var detailTr = document.createElement('tr');
+      var detailTd = document.createElement('td');
+      detailTd.colSpan = 4;
+      detailTd.style.padding = '0 12px 12px 24px';
+      var html = '';
+      ctrl.findings.forEach(function(f) {
+        var addr = f.resource_address || '';
+        html += '<div style="font-size:.85rem;padding:6px 0;border-bottom:1px solid var(--border)">';
+        html += '<span class="severity-badge severity-' + (f.severity || '') + '">' + (f.severity || '') + '</span> ';
+        html += '<a href="#" onclick="event.preventDefault();openResourceFromCompliance(\'' + esc(addr) + '\', this)" style="font-family:monospace;font-size:.8rem">' + esc(addr) + '</a> — ';
+        html += esc(f.title || '');
+        if (f.remediation) html += '<div style="font-size:.8rem;color:var(--muted);margin-top:2px">&#10148; ' + esc(f.remediation) + '</div>';
+        html += '</div>';
+      });
+      detailTd.innerHTML = html;
+      detailTr.appendChild(detailTd);
+      tbody.appendChild(detailTr);
+    }
+  });
+});
+
+// Shared function: build the full left panel HTML for any resource
+function buildLeftPanel(res, address, prefix) {
+  var lhtml = '';
+
+  // Criticality Assessment (with edit capability)
+  var editId = 'crit-' + prefix;
+  lhtml += '<div style="margin-bottom:12px;padding:12px;background:var(--surface);border-radius:8px;border:1px solid var(--border)">';
+  lhtml += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+  lhtml += '<h4 style="font-size:.9rem;margin:0">Asset Criticality Assessment</h4>';
+  lhtml += '<button onclick="toggleCritEdit(\'' + editId + '\',\'' + esc(address) + '\')" id="edit-btn-' + editId + '" style="padding:4px 12px;border-radius:6px;border:1px solid var(--info);background:rgba(59,130,246,.1);color:var(--info);cursor:pointer;font-size:.8rem;font-weight:600">&#9998; Edit</button>';
+  lhtml += '</div>';
+
+  // Display mode
+  lhtml += '<div id="crit-display-' + editId + '">';
+  lhtml += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">';
+  lhtml += '<span class="ctx-badge ctx-' + (res.asset_criticality || 'MODERATE') + '">Criticality: ' + (res.asset_criticality || 'MODERATE') + '</span>';
+  lhtml += '<span class="ctx-badge" style="background:rgba(113,113,122,.1);color:var(--muted)">Data: ' + (res.data_classification || 'internal') + '</span>';
+  lhtml += '</div>';
+  if (res.compliance_scope && res.compliance_scope.length > 0) {
+    lhtml += '<div style="margin-bottom:6px;font-size:.85rem"><strong>Compliance Scope:</strong> ';
+    res.compliance_scope.forEach(function(s) { lhtml += '<span class="tag" style="background:rgba(59,130,246,.1);color:var(--info)">' + esc(s) + '</span> '; });
+    lhtml += '</div>';
+  }
+  lhtml += '<div style="font-size:.85rem;color:var(--muted);margin-top:6px">';
+  if (res.context_source === 'business_context' && res.context_notes) {
+    lhtml += '<strong>Basis:</strong> ' + esc(res.context_notes);
+  } else if (res.context_source === 'business_context') {
+    lhtml += '<strong>Basis:</strong> Derived from organizational business context.';
+  } else {
+    lhtml += '<strong>Basis:</strong> Default assessment.';
+  }
+  lhtml += '</div>';
+  lhtml += '</div>';
+
+  // Edit mode (hidden)
+  lhtml += '<div id="crit-edit-' + editId + '" style="display:none">';
+  lhtml += '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px">';
+  lhtml += '<label style="font-size:.85rem">Criticality: <select id="crit-val-' + editId + '" style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:4px;color:var(--text);font-size:.85rem">';
+  ['VERY_LOW','LOW','MODERATE','HIGH','VERY_HIGH'].forEach(function(v) {
+    lhtml += '<option value="' + v + '"' + (v === (res.asset_criticality || 'MODERATE') ? ' selected' : '') + '>' + v + '</option>';
+  });
+  lhtml += '</select></label>';
+  lhtml += '<label style="font-size:.85rem">Data: <select id="crit-data-' + editId + '" style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:4px;color:var(--text);font-size:.85rem">';
+  ['public','internal','confidential','restricted'].forEach(function(v) {
+    lhtml += '<option value="' + v + '"' + (v === (res.data_classification || 'internal') ? ' selected' : '') + '>' + v + '</option>';
+  });
+  lhtml += '</select></label>';
+  lhtml += '</div>';
+  lhtml += '<div style="margin-bottom:8px;font-size:.85rem"><strong>Compliance Scope:</strong><br>';
+  ['PCI_DSS','ISO_27001','ISO_27701','SOC_2','GDPR','ISMS_P'].forEach(function(fw) {
+    var checked = (res.compliance_scope || []).indexOf(fw) >= 0 ? ' checked' : '';
+    lhtml += '<label style="margin-right:12px;cursor:pointer"><input type="checkbox" class="scope-cb-' + editId + '" value="' + fw + '"' + checked + '> ' + fw + '</label>';
+  });
+  lhtml += '</div>';
+  lhtml += '<div style="margin-bottom:8px"><textarea id="crit-notes-' + editId + '" placeholder="Why are you overriding the AI assessment? Describe the business justification, data handling context, or compliance requirements..." rows="4" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:.85rem;font-family:inherit;resize:vertical">' + esc(res.context_notes || '') + '</textarea></div>';
+  if (res.context_source === 'business_context') {
+    lhtml += '<div style="font-size:.8rem;color:var(--muted);margin-bottom:8px;font-style:italic">AI suggests: ' + (res.asset_criticality || 'MODERATE') + ' / ' + (res.data_classification || 'internal') + '</div>';
+  }
+  lhtml += '<div style="display:flex;gap:8px">';
+  lhtml += '<button onclick="saveCritOverride(\'' + editId + '\',\'' + esc(address) + '\')" style="padding:4px 12px;border-radius:4px;border:none;background:var(--pass);color:#fff;cursor:pointer;font-size:.85rem">Save</button>';
+  lhtml += '<button onclick="toggleCritEdit(\'' + editId + '\')" style="padding:4px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:.85rem">Cancel</button>';
+  lhtml += '<span id="crit-status-' + editId + '" style="font-size:.8rem;align-self:center"></span>';
+  lhtml += '</div>';
+  lhtml += '</div>';
+
+  if (res.total_checks_evaluated > 0) {
+    lhtml += '<div style="font-size:.8rem;color:var(--muted);margin-top:6px">' + res.total_checks_evaluated + ' security checks evaluated</div>';
+  }
+  lhtml += '</div>';
+
+  // Attack path
+  if (res.attack_path) {
+    lhtml += '<div style="padding:10px;background:rgba(249,115,22,.05);border:1px solid rgba(249,115,22,.2);border-radius:6px;margin-bottom:12px">';
+    lhtml += '<strong style="color:var(--high);font-size:.85rem">&#9889; Attack Path</strong>';
+    lhtml += '<p style="font-size:.85rem;margin-top:4px">' + esc(res.attack_path.attack_narrative) + '</p>';
+    if (res.attack_path.risk_summary) lhtml += '<p style="font-size:.8rem;color:var(--muted);margin-top:4px;font-style:italic">' + esc(res.attack_path.risk_summary) + '</p>';
+    lhtml += '</div>';
+  }
+
+  // Findings
+  if (res.findings && res.findings.length > 0) {
+    lhtml += '<h4 style="font-size:.9rem;margin-bottom:8px;color:var(--fail)">&#10007; Failed Checks (' + res.findings.length + ')</h4>';
+    res.findings.forEach(function(f) {
+      lhtml += '<div style="margin-bottom:10px;padding:10px;background:var(--bg);border-radius:6px;border:1px solid var(--border)">';
+      lhtml += '<div><span class="severity-badge severity-' + f.severity + '">' + f.severity + '</span> ';
+      lhtml += '<strong style="margin-left:4px">' + esc(f.title) + '</strong>';
+      if (f.risk_score) lhtml += '<span style="float:right;font-size:.8rem;color:var(--muted)">Risk: ' + f.risk_score + '/25</span>';
+      lhtml += '</div>';
+      lhtml += '<p style="font-size:.85rem;color:var(--muted);margin:4px 0">' + esc(f.description) + '</p>';
+      if (f.remediation) {
+        lhtml += '<div style="font-size:.85rem;padding:6px 8px;background:var(--surface);border-radius:4px;margin-top:4px">';
+        lhtml += '<span style="color:var(--pass)">&#10148;</span> ' + esc(f.remediation) + '</div>';
+      }
+      if (f.compliance_controls && f.compliance_controls.length > 0) {
+        lhtml += '<div style="margin-top:4px">';
+        f.compliance_controls.forEach(function(c) { lhtml += '<span class="tag" style="background:rgba(59,130,246,.1);color:var(--info)">' + esc(c) + '</span> '; });
+        lhtml += '</div>';
+      }
+      if (f.attack_scenarios && f.attack_scenarios.length > 0) {
+        f.attack_scenarios.forEach(function(s) {
+          lhtml += '<div style="font-size:.85rem;padding:6px 8px;margin-top:4px;border-left:2px solid var(--fail);background:rgba(220,38,38,.03)">';
+          lhtml += '<strong>' + esc(s.technique) + '</strong> <span style="color:var(--muted)">' + esc(s.mitre_tactic || '') + '</span>';
+          if (s.impact) lhtml += '<p style="margin-top:2px;color:var(--muted);font-size:.8rem">' + esc(s.impact) + '</p>';
+          lhtml += '</div>';
+        });
+      }
+      lhtml += '</div>';
+    });
+  }
+
+  // Passed checks
+  if (res.passed_checks && res.passed_checks.length > 0) {
+    lhtml += '<h4 style="font-size:.9rem;margin:12px 0 8px;color:var(--pass)">&#10003; Passed Checks (' + res.passed_checks.length + ')</h4>';
+    res.passed_checks.forEach(function(c) {
+      lhtml += '<div class="check-item"><span class="check-pass">&#10003;</span> <strong>' + esc(c.title) + '</strong> <span style="color:var(--muted);font-size:.8rem">(' + c.check_id + ')</span></div>';
+    });
+  }
+
+  if ((!res.findings || res.findings.length === 0) && (!res.passed_checks || res.passed_checks.length === 0)) {
+    lhtml += '<div style="padding:16px;text-align:center;color:var(--muted)">No Prowler checks applicable to this resource type.</div>';
+  }
+
+  // Risk comments
+  lhtml += buildRiskCommentBlock(address, prefix);
+  return lhtml;
+}
+
+// Shared function: build the full right panel HTML for any resource
+function buildRightPanel(res, address) {
+  var rhtml = '<h4 style="font-size:.9rem;margin-bottom:8px;color:var(--muted)">Terraform Configuration</h4>';
+  rhtml += '<div style="font-size:.8rem;color:var(--muted);margin-bottom:8px">' + esc(res.resource_type) + ' "' + esc(res.address.split('.').pop()) + '"</div>';
+  var config = res.after_config || {};
+  var vulnFields = new Set();
+  (res.findings || []).forEach(function(f) {
+    Object.keys(config).forEach(function(k) {
+      if ((f.description || '').toLowerCase().includes(k.toLowerCase()) || (f.title || '').toLowerCase().includes(k.toLowerCase())) vulnFields.add(k);
+      if (f.actual_value !== null && f.actual_value !== undefined && JSON.stringify(config[k]) === JSON.stringify(f.actual_value)) vulnFields.add(k);
+    });
+  });
+  var knownPatterns = ['publicly_accessible','storage_encrypted','multi_az','backup_retention_period','encrypted','http_tokens','acl','block_public','enable_key_rotation','versioning'];
+  if (res.findings && res.findings.length > 0) {
+    Object.keys(config).forEach(function(k) { knownPatterns.forEach(function(p) { if (k.toLowerCase().includes(p)) vulnFields.add(k); }); });
+  }
+  if (Object.keys(config).length > 0) {
+    rhtml += '<div style="font-size:.75rem;text-transform:uppercase;color:var(--fail);margin-bottom:4px;letter-spacing:.05em">Current (Vulnerable)</div>';
+    rhtml += '<pre style="background:var(--bg);padding:12px;border-radius:6px;border:1px solid var(--border)">';
+    rhtml += renderConfig(config, vulnFields, 0);
+    rhtml += '</pre>';
+    var fixedConfig = JSON.parse(JSON.stringify(config));
+    var hasFixable = false;
+    (res.findings || []).forEach(function(f) {
+      if (f.expected_value !== null && f.expected_value !== undefined) {
+        Object.keys(fixedConfig).forEach(function(k) {
+          if (JSON.stringify(fixedConfig[k]) === JSON.stringify(f.actual_value)) { fixedConfig[k] = f.expected_value; hasFixable = true; }
+        });
+      }
+    });
+    if (hasFixable) {
+      var fixedFields = new Set();
+      (res.findings || []).forEach(function(f) {
+        if (f.expected_value !== null && f.expected_value !== undefined) {
+          Object.keys(config).forEach(function(k) {
+            if (JSON.stringify(config[k]) === JSON.stringify(f.actual_value) && JSON.stringify(fixedConfig[k]) === JSON.stringify(f.expected_value)) fixedFields.add(k);
+          });
+        }
+      });
+      rhtml += '<div style="font-size:.75rem;text-transform:uppercase;color:var(--pass);margin:12px 0 4px;letter-spacing:.05em">Fixed Configuration</div>';
+      rhtml += '<pre style="background:rgba(34,197,94,.03);padding:12px;border-radius:6px;border:1px solid rgba(34,197,94,.2)">';
+      rhtml += renderConfigFixed(fixedConfig, fixedFields, 0);
+      rhtml += '</pre>';
+    }
+  } else {
+    rhtml += '<div style="color:var(--muted);font-size:.85rem;padding:12px">No configuration data available.</div>';
+  }
+  // Chat
+  var chatId = 'chat-' + esc(address).replace(/[^a-zA-Z0-9]/g, '_');
+  rhtml += '<div class="chat-box">';
+  rhtml += '<div style="font-size:.8rem;color:var(--muted);margin-bottom:8px">&#128172; Ask the AI assistant about this resource</div>';
+  rhtml += '<div class="chat-input-row">';
+  rhtml += '<input class="chat-input" id="chat-input-' + chatId + '" placeholder="How do I fix this? What are the dependencies?" onkeydown="if(event.key===\'Enter\')sendChat(\'' + chatId + '\')">';
+  rhtml += '<button class="chat-send" id="chat-send-' + chatId + '" onclick="sendChat(\'' + chatId + '\')">Send</button>';
+  rhtml += '</div>';
+  rhtml += '<div class="chat-response" id="chat-response-' + chatId + '"></div>';
+  rhtml += '</div>';
+  if (!window._chatResources) window._chatResources = {};
+  window._chatResources[chatId] = res;
+  return rhtml;
+}
+
+function openResourceFromCompliance(address, clickEl) {
+  var res = null;
+  Object.keys(resourceData).forEach(function(svc) {
+    resourceData[svc].forEach(function(r) { if (r.address === address) res = r; });
+  });
+  if (!res) return;
+
+  var existing = document.querySelector('.compliance-detail-row');
+  if (existing) existing.remove();
+
+  var parentDiv = clickEl.closest('div');
+  if (!parentDiv) return;
+
+  var panel = document.createElement('div');
+  panel.className = 'split-panel compliance-detail-row';
+  panel.style.margin = '8px 0';
+
+  var prefix = 'comp-' + esc(address).replace(/[^a-zA-Z0-9]/g, '_');
+
+  var left = document.createElement('div');
+  left.className = 'split-left';
+  var lhtml = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
+  lhtml += '<h3 style="font-size:1rem"><code>' + esc(res.address) + '</code></h3>';
+  lhtml += '<a href="#" onclick="event.preventDefault();this.closest(\'.split-panel\').remove()" style="color:var(--muted);font-size:.85rem">&#10005; Close</a>';
+  lhtml += '</div>';
+  lhtml += buildLeftPanel(res, address, prefix);
+  left.innerHTML = lhtml;
+
+  var right = document.createElement('div');
+  right.className = 'split-right';
+  right.innerHTML = buildRightPanel(res, address);
+
+  panel.appendChild(left);
+  panel.appendChild(right);
+  parentDiv.insertAdjacentElement('afterend', panel);
+  loadExistingComments(address, 'existing-comments-' + prefix);
+  panel.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+}
+
+function createPR() {
+  var btn = document.getElementById('create-pr-btn');
+  var statusEl = document.getElementById('pr-status');
+  btn.disabled = true;
+  btn.textContent = 'Creating PRs...';
+  fetch('/api/snapshots/{{ snapshot_id }}/fix-all', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'}
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(results) {
+    var success = results.filter(function(r) { return r.status === 'success'; });
+    if (success.length > 0) {
+      btn.textContent = success.length + ' PR(s) created';
+      btn.style.background = 'var(--pass)';
+      btn.style.borderColor = 'var(--pass)';
+      var links = success.map(function(r) { return '<a href="' + esc(r.pr_url) + '" target="_blank">PR</a>'; });
+      statusEl.innerHTML = links.join(' | ');
+    } else {
+      btn.textContent = 'Create PR';
+      btn.disabled = false;
+      statusEl.innerHTML = '<span style="color:var(--warn)">No auto-fixable findings or GITHUB_TOKEN not set</span>';
+    }
+  })
+  .catch(function(e) {
+    btn.textContent = 'Create PR';
+    btn.disabled = false;
+    statusEl.innerHTML = '<span style="color:var(--fail)">' + esc(e.message) + '</span>';
+  });
+}
+
+function switchView(view) {
+  document.getElementById('view-service-content').style.display = view === 'service' ? '' : 'none';
+  document.getElementById('view-compliance-content').style.display = view === 'compliance' ? '' : 'none';
+  document.getElementById('view-service').classList.toggle('active', view === 'service');
+  document.getElementById('view-compliance').classList.toggle('active', view === 'compliance');
+  // Close any open detail rows
+  var ex = document.querySelector('.detail-row');
+  if (ex) ex.remove();
+  activeKey = null;
+  document.querySelectorAll('.resource-row.active').forEach(function(el) { el.classList.remove('active'); });
+}
+
+function toggleDetail(rowEl, service, address) {
+  const key = service + ':' + address;
+  // Remove any existing detail row
+  const existing = document.querySelector('.detail-row');
+  if (existing) existing.remove();
+  document.querySelectorAll('.resource-row.active').forEach(el => el.classList.remove('active'));
+
+  if (activeKey === key) { activeKey = null; return; }
+  activeKey = key;
+  rowEl.classList.add('active');
+
+  const resources = resourceData[service] || [];
+  const res = resources.find(function(r) { return r.address === address; });
+  if (!res) return;
+
+  // Create detail row right after the clicked row
+  var detailRow = document.createElement('tr');
+  detailRow.className = 'detail-row';
+  var td = document.createElement('td');
+  td.colSpan = 6;
+  detailRow.appendChild(td);
+
+  var panel = document.createElement('div');
+  panel.className = 'split-panel';
+  td.appendChild(panel);
+
+  var svcPrefix = 'svc-' + esc(address).replace(/[^a-zA-Z0-9]/g, '_');
+
+  var left = document.createElement('div');
+  left.className = 'split-left';
+  left.innerHTML = buildLeftPanel(res, address, svcPrefix);
+
+  var right = document.createElement('div');
+  right.className = 'split-right';
+  right.innerHTML = buildRightPanel(res, address);
+
+  panel.appendChild(left);
+  panel.appendChild(right);
+  rowEl.parentNode.insertBefore(detailRow, rowEl.nextSibling);
+  loadExistingComments(address, 'existing-comments-' + svcPrefix);
+  detailRow.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function renderConfig(obj, vulnFields, depth) {
+  var out = '';
+  var indent = '  '.repeat(depth);
+  if (Array.isArray(obj)) {
+    obj.forEach(function(item) {
+      if (typeof item === 'object' && item !== null) {
+        out += indent + '[\n' + renderConfig(item, vulnFields, depth+1) + indent + ']\n';
+      } else {
+        out += indent + '  ' + esc(JSON.stringify(item)) + '\n';
+      }
+    });
+  } else if (typeof obj === 'object' && obj !== null) {
+    Object.keys(obj).forEach(function(k) {
+      var v = obj[k];
+      var isVuln = vulnFields.has(k);
+      var kh = isVuln ? '<span class="hl">' + esc(k) + '</span>' : esc(k);
+      if (typeof v === 'object' && v !== null) {
+        out += indent + kh + ' = {\n' + renderConfig(v, vulnFields, depth+1) + indent + '}\n';
+      } else {
+        var vs = JSON.stringify(v);
+        var vh = isVuln ? '<span class="hl">' + esc(vs) + '</span>' : esc(vs);
+        out += indent + kh + ' = ' + vh + '\n';
+      }
+    });
+  }
+  return out;
+}
+
+function renderConfigFixed(obj, fixedFields, depth) {
+  var out = '';
+  var indent = '  '.repeat(depth);
+  if (typeof obj === 'object' && obj !== null && !Array.isArray(obj)) {
+    Object.keys(obj).forEach(function(k) {
+      var v = obj[k];
+      var isFixed = fixedFields.has(k);
+      var kh = isFixed ? '<span style="color:var(--pass)">' + esc(k) + '</span>' : esc(k);
+      if (typeof v === 'object' && v !== null) {
+        out += indent + kh + ' = {\n' + renderConfigFixed(v, fixedFields, depth+1) + indent + '}\n';
+      } else {
+        var vs = JSON.stringify(v);
+        var vh = isFixed ? '<span style="color:var(--pass);font-weight:600">' + esc(vs) + '</span>' : esc(vs);
+        out += indent + kh + ' = ' + vh + '\n';
+      }
+    });
+  }
+  return out;
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function toggleCritEdit(editId) {
+  var display = document.getElementById('crit-display-' + editId);
+  var edit = document.getElementById('crit-edit-' + editId);
+  var btn = document.getElementById('edit-btn-' + editId);
+  if (edit.style.display === 'none') {
+    edit.style.display = '';
+    display.style.display = 'none';
+    btn.textContent = 'Cancel';
+  } else {
+    edit.style.display = 'none';
+    display.style.display = '';
+    btn.innerHTML = '&#9998; Edit';
+  }
+}
+
+function saveCritOverride(editId, address) {
+  var criticality = document.getElementById('crit-val-' + editId).value;
+  var dataClass = document.getElementById('crit-data-' + editId).value;
+  var notes = document.getElementById('crit-notes-' + editId).value;
+  var statusEl = document.getElementById('crit-status-' + editId);
+  var scope = [];
+  document.querySelectorAll('.scope-cb-' + editId + ':checked').forEach(function(cb) {
+    scope.push(cb.value);
+  });
+
+  statusEl.innerHTML = '<span style="color:var(--muted)">Saving...</span>';
+
+  fetch('/api/projects/{{ project_id }}/overrides', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      resource_address: address,
+      criticality: criticality,
+      data_classification: dataClass,
+      compliance_scope: scope,
+      notes: notes
+    })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function() {
+    statusEl.innerHTML = '<span style="color:var(--pass)">&#10003; Saved</span>';
+    // Update display
+    var display = document.getElementById('crit-display-' + editId);
+    var badges = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">';
+    badges += '<span class="ctx-badge ctx-' + criticality + '">Criticality: ' + criticality + '</span>';
+    badges += '<span class="ctx-badge" style="background:rgba(113,113,122,.1);color:var(--muted)">Data: ' + dataClass + '</span>';
+    badges += '<span class="ctx-badge" style="background:rgba(59,130,246,.1);color:var(--info);font-size:.7rem">OVERRIDE</span>';
+    badges += '</div>';
+    if (scope.length > 0) {
+      badges += '<div style="margin-bottom:6px;font-size:.85rem"><strong>Compliance Scope:</strong> ';
+      scope.forEach(function(s) { badges += '<span class="tag" style="background:rgba(59,130,246,.1);color:var(--info)">' + s + '</span> '; });
+      badges += '</div>';
+    }
+    if (notes) badges += '<div style="font-size:.85rem;color:var(--muted)"><strong>Notes:</strong> ' + esc(notes) + '</div>';
+    display.innerHTML = badges;
+    // Switch back to display mode
+    setTimeout(function() { toggleCritEdit(editId); }, 500);
+  })
+  .catch(function(e) {
+    statusEl.innerHTML = '<span style="color:var(--fail)">Error: ' + esc(e.message) + '</span>';
+  });
+}
+
+function buildRiskCommentBlock(address, prefix) {
+  var html = '';
+  html += '<div id="existing-comments-' + prefix + '" style="margin-top:12px"></div>';
+  html += '<div style="margin-top:16px;padding:12px;border-top:1px solid var(--border)">';
+  html += '<h4 style="font-size:.9rem;margin-bottom:8px">&#9998; Risk Comment</h4>';
+  html += '<textarea id="rc-text-' + prefix + '" placeholder="Justification for accepting this risk..." style="width:100%;height:60px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:.85rem;font-family:inherit;resize:vertical"></textarea>';
+  html += '<div style="display:flex;gap:12px;align-items:center;margin-top:8px;flex-wrap:wrap">';
+  html += '<label style="font-size:.85rem;cursor:pointer;display:flex;align-items:center;gap:4px"><input type="checkbox" id="rc-accept-' + prefix + '"> Accept risk</label>';
+  html += '<label style="font-size:.85rem;display:flex;align-items:center;gap:4px">Expires: <input type="date" id="rc-expiry-' + prefix + '" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text);font-size:.85rem"></label>';
+  html += '<button style="padding:6px 14px;border-radius:6px;border:none;background:var(--warn);color:#000;cursor:pointer;font-size:.85rem;font-weight:600" onclick="saveRiskComment(\'' + esc(address) + '\',\'' + prefix + '\')">Save Comment</button>';
+  html += '<span id="rc-status-' + prefix + '" style="font-size:.8rem"></span>';
+  html += '</div>';
+  html += '</div>';
+  return html;
+}
+
+function loadExistingComments(address, containerId) {
+  var container = document.getElementById(containerId);
+  if (!container) return;
+  fetch('/api/snapshots/{{ snapshot_id }}/comments')
+    .then(function(r) { return r.json(); })
+    .then(function(comments) {
+      var matching = comments.filter(function(c) { return c.resource_address === address; });
+      if (matching.length === 0) return;
+      var html = '<h4 style="font-size:.85rem;color:var(--warn);margin-bottom:6px">&#9998; Saved Comments</h4>';
+      matching.forEach(function(c) {
+        html += '<div style="padding:8px;margin-bottom:6px;border-radius:6px;font-size:.85rem;' +
+          (c.accepted ? 'background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3)' : 'background:var(--bg);border:1px solid var(--border)') + '">';
+        if (c.accepted) html += '<strong style="color:var(--warn)">&#9888; Risk Accepted</strong> ';
+        html += esc(c.comment);
+        if (c.expiry_date) html += ' <span style="color:var(--muted);font-size:.8rem">(expires: ' + c.expiry_date + ')</span>';
+        html += '<div style="font-size:.75rem;color:var(--muted);margin-top:2px">' + c.created_at.substring(0, 19) + '</div>';
+        html += '</div>';
+      });
+      container.innerHTML = html;
+    })
+    .catch(function() {});
+}
+
+function saveRiskComment(address, prefix) {
+  var text = document.getElementById('rc-text-' + prefix).value.trim();
+  var accepted = document.getElementById('rc-accept-' + prefix).checked;
+  var expiry = document.getElementById('rc-expiry-' + prefix).value;
+  var statusEl = document.getElementById('rc-status-' + prefix);
+
+  if (!text) {
+    statusEl.innerHTML = '<span style="color:var(--fail)">Comment required</span>';
+    return;
+  }
+
+  statusEl.innerHTML = '<span style="color:var(--muted)">Saving...</span>';
+
+  fetch('/api/snapshots/{{ snapshot_id }}/comments', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      resource_address: address,
+      comment: text,
+      accepted: accepted,
+      expiry_date: expiry,
+      approver: ''
+    })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    statusEl.innerHTML = '<span style="color:var(--pass)">&#10003; Saved</span>';
+    // Show saved comment in the panel
+    var commentDisplay = document.createElement('div');
+    commentDisplay.style.cssText = 'margin-top:8px;padding:10px;border-radius:6px;font-size:.85rem;' +
+      (accepted ? 'background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3)' : 'background:var(--bg);border:1px solid var(--border)');
+    var html = '';
+    if (accepted) html += '<strong style="color:var(--warn)">&#9888; Risk Accepted</strong><br>';
+    html += '<span style="color:var(--text)">' + esc(text) + '</span>';
+    if (expiry) html += '<br><span style="color:var(--muted);font-size:.8rem">Expires: ' + expiry + '</span>';
+    commentDisplay.innerHTML = html;
+    var existingContainer = document.getElementById('existing-comments-' + prefix);
+    if (existingContainer) {
+      existingContainer.appendChild(commentDisplay);
+    } else {
+      statusEl.parentNode.parentNode.insertBefore(commentDisplay, statusEl.parentNode);
+    }
+  })
+  .catch(function(e) {
+    statusEl.innerHTML = '<span style="color:var(--fail)">Error: ' + e.message + '</span>';
+  });
+}
+
+function toggleReviewPanel() {
+  var panel = document.getElementById('review-panel');
+  var btn = document.getElementById('review-btn');
+  if (panel.style.display === 'none') {
+    panel.style.display = '';
+    btn.innerHTML = '&#10005; Close Review';
+    document.getElementById('pr-status').innerHTML = '';
+    buildReviewList();
+  } else {
+    panel.style.display = 'none';
+    btn.innerHTML = '&#9881; Review &amp; Update';
+  }
+}
+
+function buildReviewList() {
+  var list = document.getElementById('review-list');
+  var html = '';
+  var idx = 0;
+  Object.keys(resourceData).forEach(function(svc) {
+    resourceData[svc].forEach(function(res) {
+      if (!res.findings || res.findings.length === 0) return;
+      html += '<div class="review-resource" data-service="' + svc + '">';
+      html += '<div class="review-resource-header">' + esc(res.address) + ' <span style="font-weight:400;color:var(--muted);font-family:sans-serif">(' + svc + ')</span></div>';
+      res.findings.forEach(function(f) {
+        var fid = 'rf-' + idx;
+        var canFix = f.expected_value !== null && f.expected_value !== undefined && f.actual_value !== null;
+        html += '<div class="review-item" data-fid="' + fid + '" data-severity="' + f.severity + '" data-service="' + svc + '" data-fixable="' + (canFix ? 'yes' : 'no') + '">';
+        html += '<div class="review-actions">';
+        if (canFix) {
+          html += '<label><input type="radio" name="' + fid + '" value="fix" checked onchange="onReviewChange(\'' + fid + '\')"><span>&#10003; Fixed</span></label>';
+        }
+        html += '<label><input type="radio" name="' + fid + '" value="accept"' + (!canFix ? ' checked' : '') + ' onchange="onReviewChange(\'' + fid + '\')"><span>&#9888; Accept</span></label>';
+        html += '</div>';
+        html += '<span class="severity-badge severity-' + f.severity + '">' + f.severity + '</span> ';
+        html += '<span>' + esc(f.title) + '</span>';
+        html += '<input type="hidden" class="review-finding-data" data-address="' + esc(res.address) + '" data-check="' + esc(f.check_id) + '">';
+        // Inline comment for accept (hidden initially if fixable)
+        html += '<div class="review-accept-input" id="accept-input-' + fid + '" style="display:' + (canFix ? 'none' : 'block') + ';margin-top:6px;width:100%;padding-left:28px">';
+        html += '<textarea class="accept-comment-field" placeholder="Why is this risk acceptable? Describe the business justification, compensating controls, or timeline for remediation..." rows="2" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:.85rem;font-family:inherit;resize:vertical"></textarea>';
+        html += '<div style="display:flex;gap:8px;align-items:center;margin-top:4px">';
+        html += '<label style="font-size:.8rem;color:var(--muted);display:flex;align-items:center;gap:4px">Expires: <input type="date" class="accept-expiry-field" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text);font-size:.85rem;color-scheme:dark"></label>';
+        html += '</div>';
+        html += '</div>';
+        html += '</div>';
+        idx++;
+      });
+      html += '</div>';
+    });
+  });
+  list.innerHTML = html;
+  // Add input listeners for validation
+  list.querySelectorAll('.accept-comment-field').forEach(function(el) {
+    el.addEventListener('input', updateReviewSummary);
+  });
+  // Populate service filter
+  var svcFilter = document.getElementById('filter-service');
+  var services = new Set();
+  document.querySelectorAll('.review-item').forEach(function(item) {
+    services.add(item.dataset.service);
+  });
+  svcFilter.innerHTML = '<option value="">All Services</option>';
+  services.forEach(function(s) {
+    var opt = document.createElement('option');
+    opt.value = s; opt.textContent = s;
+    svcFilter.appendChild(opt);
+  });
+
+  updateReviewSummary();
+}
+
+function applyReviewFilters() {
+  var severity = document.getElementById('filter-severity').value;
+  var service = document.getElementById('filter-service').value;
+  var status = document.getElementById('filter-status').value;
+
+  document.querySelectorAll('.review-item').forEach(function(item) {
+    var show = true;
+    if (severity && item.dataset.severity !== severity) show = false;
+    if (service && item.dataset.service !== service) show = false;
+    if (status) {
+      var checked = item.querySelector('input[type="radio"]:checked');
+      if (checked && checked.value !== status) show = false;
+    }
+    item.style.display = show ? '' : 'none';
+  });
+  document.querySelectorAll('.review-resource').forEach(function(grp) {
+    var visible = grp.querySelectorAll('.review-item:not([style*="none"])');
+    grp.style.display = visible.length > 0 ? '' : 'none';
+  });
+}
+
+function clearReviewFilters() {
+  document.getElementById('filter-severity').value = '';
+  document.getElementById('filter-service').value = '';
+  document.getElementById('filter-status').value = '';
+  document.querySelectorAll('.review-item').forEach(function(i) { i.style.display = ''; });
+  document.querySelectorAll('.review-resource').forEach(function(g) { g.style.display = ''; });
+}
+
+function onReviewChange(fid) {
+  var item = document.querySelector('.review-item[data-fid="' + fid + '"]');
+  var checked = item.querySelector('input[type="radio"]:checked');
+  var acceptInput = document.getElementById('accept-input-' + fid);
+  if (checked && checked.value === 'accept') {
+    acceptInput.style.display = 'block';
+    var commentField = acceptInput.querySelector('.accept-comment-field');
+    setTimeout(function() { commentField.focus(); }, 50);
+  } else {
+    acceptInput.style.display = 'none';
+  }
+  updateReviewSummary();
+}
+
+function updateReviewSummary() {
+  var fixes = 0, accepts = 0, needsComment = 0;
+  document.querySelectorAll('.review-item').forEach(function(item) {
+    var checked = item.querySelector('input[type="radio"]:checked');
+    if (checked) {
+      if (checked.value === 'fix') {
+        fixes++;
+      } else if (checked.value === 'accept') {
+        accepts++;
+        var comment = item.querySelector('.accept-comment-field');
+        if (comment && !comment.value.trim()) needsComment++;
+      }
+    }
+  });
+  var el = document.getElementById('review-summary');
+  el.innerHTML = '<span style="color:var(--pass)">' + fixes + ' fixed</span> | <span style="color:var(--warn)">' + accepts + ' accepted</span>';
+
+  var btn = document.getElementById('submit-review-btn');
+  if (needsComment > 0) {
+    btn.innerHTML = needsComment + ' accepted finding' + (needsComment > 1 ? 's' : '') + ' need comment' + (needsComment > 1 ? 's' : '');
+    btn.disabled = true;
+    btn.style.background = '';
+  } else if (fixes > 0 && accepts > 0) {
+    btn.innerHTML = '&#8594; Create PR (' + fixes + ') + Save ' + accepts + ' acceptance(s)';
+    btn.disabled = false;
+  } else if (fixes > 0) {
+    btn.innerHTML = '&#8594; Create PR (' + fixes + ' fixes)';
+    btn.disabled = false;
+  } else if (accepts > 0) {
+    btn.innerHTML = 'Save ' + accepts + ' acceptance(s)';
+    btn.disabled = false;
+  } else {
+    btn.innerHTML = 'No findings to review';
+    btn.disabled = true;
+  }
+}
+
+function submitReview() {
+  var btn = document.getElementById('submit-review-btn');
+  var statusEl = document.getElementById('pr-status');
+  btn.disabled = true;
+  btn.textContent = 'Processing...';
+
+  // Collect acceptances with per-finding comments
+  var acceptPromises = [];
+  document.querySelectorAll('.review-item').forEach(function(item) {
+    var checked = item.querySelector('input[type="radio"]:checked');
+    var data = item.querySelector('.review-finding-data');
+    if (checked && checked.value === 'accept' && data) {
+      var comment = item.querySelector('.accept-comment-field').value.trim();
+      var expiry = item.querySelector('.accept-expiry-field').value;
+      acceptPromises.push(fetch('/api/snapshots/{{ snapshot_id }}/comments', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          resource_address: data.dataset.address,
+          comment: comment,
+          accepted: true,
+          expiry_date: expiry
+        })
+      }));
+    }
+  });
+
+  var hasFixes = false;
+  document.querySelectorAll('.review-item').forEach(function(item) {
+    var checked = item.querySelector('input[type="radio"]:checked');
+    if (checked && checked.value === 'fix') hasFixes = true;
+  });
+
+  Promise.all(acceptPromises).then(function() {
+    if (!hasFixes) {
+      btn.innerHTML = '&#10003; Acceptances saved';
+      btn.style.background = 'var(--pass)';
+      statusEl.innerHTML = '<span style="color:var(--pass)">' + acceptPromises.length + ' acceptance(s) saved</span>';
+      return;
+    }
+    return fetch('/api/snapshots/{{ snapshot_id }}/fix-all', {
+      method: 'POST', headers: {'Content-Type': 'application/json'}
+    }).then(function(r) { return r.json(); })
+    .then(function(results) {
+      var success = results.filter(function(r) { return r.status === 'success'; });
+      if (success.length > 0) {
+        btn.innerHTML = '&#10003; ' + success.length + ' PR(s) created';
+        btn.style.background = 'var(--pass)';
+        var links = success.map(function(r) { return '<a href="' + esc(r.pr_url) + '" target="_blank" style="color:var(--pass)">View PR</a>'; });
+        statusEl.innerHTML = links.join(' | ');
+      } else {
+        statusEl.innerHTML = '<span style="color:var(--warn)">No auto-fixable findings or GITHUB_TOKEN not set</span>';
+      }
+      if (acceptPromises.length > 0) {
+        statusEl.innerHTML += ' | <span style="color:var(--warn)">' + acceptPromises.length + ' acceptance(s) saved</span>';
+      }
+      btn.disabled = false;
+    });
+  }).catch(function(e) {
+    btn.textContent = 'Retry';
+    btn.disabled = false;
+    statusEl.innerHTML = '<span style="color:var(--fail)">' + esc(e.message) + '</span>';
+  });
+}
+
+function sendChat(address) {
+  var input = document.getElementById('chat-input-' + address);
+  var btn = document.getElementById('chat-send-' + address);
+  var responseEl = document.getElementById('chat-response-' + address);
+  var message = input.value.trim();
+  if (!message) return;
+
+  btn.disabled = true;
+  btn.textContent = '...';
+  responseEl.style.display = 'block';
+  responseEl.textContent = '';
+  input.value = '';
+
+  var res = (window._chatResources || {})[address] || {};
+  var allControls = [];
+  (res.findings || []).forEach(function(f) {
+    (f.compliance_controls || []).forEach(function(c) {
+      if (allControls.indexOf(c) === -1) allControls.push(c);
+    });
+  });
+
+  var body = JSON.stringify({
+    message: message,
+    resource_address: res.address || address,
+    resource_type: res.resource_type || '',
+    resource_config: res.after_config || {},
+    findings: res.findings || [],
+    asset_criticality: res.asset_criticality || 'MODERATE',
+    data_classification: res.data_classification || 'internal',
+    compliance_controls: allControls
+  });
+
+  fetch('/api/chat', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: body
+  }).then(function(resp) {
+    var reader = resp.body.getReader();
+    var decoder = new TextDecoder();
+    var buffer = '';
+
+    function read() {
+      reader.read().then(function(result) {
+        if (result.done) {
+          btn.disabled = false;
+          btn.textContent = 'Send';
+          formatChatResponse(responseEl);
+          return;
+        }
+        buffer += decoder.decode(result.value, {stream: true});
+        var lines = buffer.split('\n');
+        buffer = lines.pop();
+        lines.forEach(function(line) {
+          if (line.startsWith('data: ')) {
+            var data = line.substring(6);
+            if (data === '[DONE]') return;
+            try {
+              var text = JSON.parse(data);
+              responseEl.textContent += text;
+              responseEl.scrollTop = responseEl.scrollHeight;
+            } catch(e) {}
+          }
+        });
+        read();
+      });
+    }
+    read();
+  }).catch(function(e) {
+    responseEl.textContent = 'Error: ' + e.message;
+    btn.disabled = false;
+    btn.textContent = 'Send';
+  });
+}
+
+function formatChatResponse(el) {
+  // Simple markdown-like formatting for code blocks
+  var text = el.textContent;
+  var html = text
+    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\n/g, '<br>');
+  el.innerHTML = html;
+}
+
+function filterResources(query) {
+  query = query.toLowerCase();
+  // Close any open detail
+  var ex = document.querySelector('.detail-row'); if (ex) ex.remove();
+  activeKey = null;
+  document.querySelectorAll('.resource-row.active').forEach(function(el){ el.classList.remove('active'); });
+
+  document.querySelectorAll('.resource-row').forEach(function(row) {
+    var text = row.textContent.toLowerCase();
+    row.style.display = (!query || text.includes(query)) ? '' : 'none';
+  });
+  document.querySelectorAll('.service-group').forEach(function(g) {
+    var visible = g.querySelectorAll('.resource-row:not([style*="none"])');
+    g.style.display = (visible.length > 0 || !query) ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}
