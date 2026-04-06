@@ -379,7 +379,24 @@ def _run_terraform(
         raise click.ClickException("terraform show -json failed")
 
     Path(plan_json).write_text(r.stdout)
-    click.echo(f"Plan exported: {plan_json}")
+
+    # Validate plan JSON
+    try:
+        plan_data = json.loads(r.stdout)
+        resource_count = len(plan_data.get("resource_changes", []))
+        click.echo(f"Plan exported: {resource_count} resources")
+        if resource_count == 0:
+            click.echo(
+                "Warning: Plan has 0 resource changes. "
+                "Check your Terraform configuration and AWS credentials.",
+                err=True,
+            )
+    except json.JSONDecodeError:
+        raise click.ClickException(
+            "terraform show -json produced invalid JSON. "
+            "Ensure terraform_wrapper is disabled if using setup-terraform.",
+        )
+
     return Path(plan_json)
 
 
