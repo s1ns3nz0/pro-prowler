@@ -1,0 +1,153 @@
+- check_id: dynamodb_table_encryption
+  title: DynamoDB Table Encryption with KMS
+  description: Ensure DynamoDB table is encrypted at rest with a customer-managed KMS key
+  severity: HIGH
+  resource_types:
+  - aws_dynamodb_table
+  detection_logic:
+    field_path: server_side_encryption.0.enabled
+    operator: equals
+    expected_value: true
+  remediation: Enable server-side encryption with a customer-managed KMS key
+  compliance_mappings:
+    PCI_DSS:
+    - '3.4'
+    - 3.4.1
+    ISO_27001:
+    - A.10.1.1
+    ISO_27701:
+    - 6.7.1.1
+    SOC_2:
+    - CC6.1
+    - CC6.7
+    GDPR:
+    - Art.32
+    - Art.25
+    ISMS_P:
+    - 2.5.1
+    - 2.7.1
+  attack_scenarios:
+  - technique: DynamoDB Table Data Exfiltration
+    description: >
+      An attacker with DynamoDB read permissions scans or queries the table
+      to extract all items. Without customer-managed KMS encryption, the
+      organization has weaker access control boundaries and cannot revoke
+      encryption key access independently of IAM permissions.
+    mitre_tactic: "Exfiltration (TA0010)"
+    impact: >
+      Data exposure without encryption key governance, inability to
+      independently revoke data access through key policy controls.
+    threat_source: ADVERSARIAL
+- check_id: dynamodb_table_pitr
+  title: DynamoDB Point-in-Time Recovery
+  description: Ensure DynamoDB table has point-in-time recovery enabled
+  severity: MODERATE
+  resource_types:
+  - aws_dynamodb_table
+  detection_logic:
+    field_path: point_in_time_recovery.0.enabled
+    operator: equals
+    expected_value: true
+  remediation: Enable point_in_time_recovery on the DynamoDB table
+  compliance_mappings:
+    PCI_DSS:
+    - '10.7'
+    ISO_27001:
+    - A.12.3.1
+    - A.17.1.1
+    ISO_27701:
+    - 6.9.1.1
+    SOC_2:
+    - CC6.1
+    - A1.2
+    GDPR:
+    - Art.5
+    - Art.32
+    ISMS_P:
+    - 2.12.1
+  attack_scenarios:
+  - technique: DynamoDB Data Destruction Without Recovery
+    description: >
+      An attacker with write access deletes or corrupts items in a DynamoDB
+      table. Without point-in-time recovery, the organization cannot restore
+      the table to a state before the attack, resulting in permanent data loss.
+    mitre_tactic: "Impact (TA0040)"
+    impact: >
+      Inability to recover from data deletion or corruption, permanent
+      data loss, extended business disruption.
+    threat_source: ADVERSARIAL
+- check_id: dynamodb_table_autoscaling
+  title: DynamoDB Table Auto-Scaling
+  description: Ensure DynamoDB table has auto-scaling configured for capacity management
+  severity: LOW
+  resource_types:
+  - aws_appautoscaling_target
+  detection_logic:
+    field_path: service_namespace
+    operator: equals
+    expected_value: dynamodb
+  remediation: Configure auto-scaling targets for DynamoDB read and write capacity
+  compliance_mappings:
+    PCI_DSS:
+    - '10.7'
+    ISO_27001:
+    - A.17.1.1
+    - A.17.2.1
+    ISO_27701:
+    - 6.9.1.1
+    SOC_2:
+    - CC7.5
+    - A1.2
+    GDPR:
+    - Art.32
+    ISMS_P:
+    - 2.12.1
+  attack_scenarios:
+  - technique: DynamoDB Capacity Exhaustion DoS
+    description: >
+      An attacker sends a high volume of requests to a DynamoDB table with
+      fixed provisioned capacity. Without auto-scaling, the table throttles
+      legitimate requests, causing application errors and denial of service
+      for end users.
+    mitre_tactic: "Impact (TA0040)"
+    impact: >
+      Service degradation through throttling, application errors for
+      legitimate users, potential revenue loss during outage.
+    threat_source: ADVERSARIAL
+- check_id: dynamodb_table_deletion_protection
+  title: DynamoDB Table Deletion Protection
+  description: Ensure DynamoDB table has deletion protection enabled
+  severity: MODERATE
+  resource_types:
+  - aws_dynamodb_table
+  detection_logic:
+    field_path: deletion_protection_enabled
+    operator: equals
+    expected_value: true
+  remediation: Enable deletion_protection_enabled on the DynamoDB table
+  compliance_mappings:
+    PCI_DSS:
+    - '10.7'
+    ISO_27001:
+    - A.17.1.1
+    - A.12.1.1
+    ISO_27701:
+    - 6.9.1.1
+    SOC_2:
+    - CC7.5
+    - A1.2
+    GDPR:
+    - Art.32
+    ISMS_P:
+    - 2.12.1
+  attack_scenarios:
+  - technique: DynamoDB Table Destruction
+    description: >
+      An attacker with IAM permissions deletes a DynamoDB table with a
+      single API call. Without deletion protection, critical data is
+      immediately and irrecoverably lost, causing severe business disruption.
+    mitre_tactic: "Impact (TA0040)"
+    impact: >
+      Permanent data loss, extended recovery time, business continuity
+      failure for applications depending on the table.
+    threat_source: ADVERSARIAL

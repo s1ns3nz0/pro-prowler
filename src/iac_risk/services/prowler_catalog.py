@@ -6,7 +6,7 @@ import yaml
 
 from iac_risk.core.schemas import ProwlerCheckDef
 
-_DEFAULT_DATA_DIR = Path(__file__).resolve().parent.parent.parent.parent / "data" / "prowler_checks"
+_DEFAULT_DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "prowler_checks"
 
 
 class ProwlerCatalog:

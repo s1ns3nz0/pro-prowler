@@ -1,0 +1,193 @@
+- check_id: cloudwatch_log_encryption
+  title: CloudWatch Log Group Encryption
+  description: Ensure CloudWatch log group is encrypted with a KMS key
+  severity: HIGH
+  resource_types:
+  - aws_cloudwatch_log_group
+  detection_logic:
+    field_path: kms_key_id
+    operator: exists
+  remediation: Set kms_key_id on the CloudWatch log group for encryption at rest
+  compliance_mappings:
+    PCI_DSS:
+    - '3.4'
+    - 3.4.1
+    ISO_27001:
+    - A.10.1.1
+    ISO_27701:
+    - 6.7.1.1
+    SOC_2:
+    - CC6.1
+    - CC6.7
+    GDPR:
+    - Art.32
+    - Art.25
+    ISMS_P:
+    - 2.5.1
+    - 2.7.1
+  attack_scenarios:
+  - technique: CloudWatch Log Data Exfiltration
+    description: >
+      An attacker with CloudWatch Logs read permissions accesses unencrypted
+      log data containing application secrets, database queries, API keys,
+      and PII. Without KMS encryption, log data is not protected by
+      customer-controlled encryption boundaries.
+    mitre_tactic: "Exfiltration (TA0010)"
+    impact: >
+      Exposure of sensitive log data, credential leakage from application
+      logs, PII exposure in audit and application logs.
+    threat_source: ADVERSARIAL
+- check_id: cloudwatch_log_retention
+  title: CloudWatch Log Retention Policy
+  description: Ensure CloudWatch log group has a retention policy configured
+  severity: MODERATE
+  resource_types:
+  - aws_cloudwatch_log_group
+  detection_logic:
+    field_path: retention_in_days
+    operator: exists
+  remediation: Set retention_in_days on the CloudWatch log group
+  compliance_mappings:
+    PCI_DSS:
+    - '10.7'
+    ISO_27001:
+    - A.12.4.1
+    - A.12.4.4
+    ISO_27701:
+    - 6.9.4.1
+    SOC_2:
+    - CC7.2
+    GDPR:
+    - Art.5
+    - Art.17
+    ISMS_P:
+    - 2.9.1
+    - 3.4.1
+  attack_scenarios:
+  - technique: Indefinite Log Retention Data Exposure
+    description: >
+      Without a retention policy, logs accumulate indefinitely, increasing
+      the attack surface. An attacker who gains log access obtains years
+      of historical data containing old credentials, PII, and system
+      information that should have been purged.
+    mitre_tactic: "Exfiltration (TA0010)"
+    impact: >
+      Extended exposure window for sensitive log data, GDPR data
+      retention violations, increased storage costs.
+    threat_source: ADVERSARIAL
+- check_id: guardduty_enabled
+  title: GuardDuty Detector Enabled
+  description: Ensure GuardDuty threat detection is enabled in the account
+  severity: HIGH
+  resource_types:
+  - aws_guardduty_detector
+  detection_logic:
+    field_path: enable
+    operator: equals
+    expected_value: true
+  remediation: Create and enable a GuardDuty detector in each region
+  compliance_mappings:
+    PCI_DSS:
+    - '11.4'
+    - '10.6'
+    ISO_27001:
+    - A.12.4.1
+    - A.16.1.1
+    ISO_27701:
+    - 6.9.4.1
+    SOC_2:
+    - CC7.2
+    - CC7.3
+    GDPR:
+    - Art.32
+    - Art.33
+    ISMS_P:
+    - 2.9.1
+    - 2.11.1
+  attack_scenarios:
+  - technique: Undetected Account Compromise
+    description: >
+      Without GuardDuty, automated threat detection for IAM credential
+      abuse, cryptocurrency mining, unauthorized API calls, and data
+      exfiltration is absent. An attacker operates freely without triggering
+      any behavioral anomaly alerts.
+    mitre_tactic: "Defense Evasion (TA0005)"
+    impact: >
+      No automated threat detection, undetected credential abuse,
+      extended attacker dwell time without alerting.
+    threat_source: ADVERSARIAL
+- check_id: securityhub_enabled
+  title: Security Hub Enabled
+  description: Ensure AWS Security Hub is enabled for centralized security findings
+  severity: MODERATE
+  resource_types:
+  - aws_securityhub_account
+  detection_logic:
+    field_path: id
+    operator: exists
+  remediation: Enable AWS Security Hub in each region for centralized findings management
+  compliance_mappings:
+    PCI_DSS:
+    - '11.4'
+    ISO_27001:
+    - A.12.4.1
+    - A.16.1.1
+    ISO_27701:
+    - 6.9.4.1
+    SOC_2:
+    - CC7.2
+    GDPR:
+    - Art.32
+    ISMS_P:
+    - 2.9.1
+    - 2.11.1
+  attack_scenarios:
+  - technique: Fragmented Security Visibility
+    description: >
+      Without Security Hub, security findings from GuardDuty, Config,
+      Inspector, and other services remain siloed. An attacker exploits
+      gaps between disconnected security tools, as no centralized view
+      correlates indicators of compromise across services.
+    mitre_tactic: "Defense Evasion (TA0005)"
+    impact: >
+      Inability to correlate security findings, fragmented incident
+      response, missed attack indicators across services.
+    threat_source: ADVERSARIAL
+- check_id: cloudwatch_alarm_action
+  title: CloudWatch Alarm Action Configured
+  description: Ensure CloudWatch alarms have actions configured for notification
+  severity: MODERATE
+  resource_types:
+  - aws_cloudwatch_metric_alarm
+  detection_logic:
+    field_path: alarm_actions
+    operator: exists
+  remediation: Configure alarm_actions with SNS topic ARNs for alarm notifications
+  compliance_mappings:
+    PCI_DSS:
+    - '10.6'
+    ISO_27001:
+    - A.12.4.1
+    - A.16.1.2
+    ISO_27701:
+    - 6.9.4.1
+    SOC_2:
+    - CC7.2
+    - CC7.3
+    GDPR:
+    - Art.33
+    ISMS_P:
+    - 2.9.1
+    - 2.11.2
+  attack_scenarios:
+  - technique: Silent Alarm Bypass
+    description: >
+      An attacker triggers security-relevant CloudWatch alarms through
+      suspicious activity, but without configured actions, no notifications
+      are sent. Security teams remain unaware of threshold breaches, failed
+      logins, and resource anomalies.
+    mitre_tactic: "Defense Evasion (TA0005)"
+    impact: >
+      Security alarms trigger silently with no notification, delayed
+      detection of security events, ineffective monitoring.
+    threat_source: ADVERSARIAL

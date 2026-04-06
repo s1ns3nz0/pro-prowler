@@ -1,0 +1,183 @@
+- check_id: cloudtrail_enabled
+  title: CloudTrail Logging Enabled
+  description: Ensure CloudTrail is enabled for API logging
+  severity: HIGH
+  resource_types:
+  - aws_cloudtrail
+  detection_logic:
+    field_path: enable_logging
+    operator: equals
+    expected_value: true
+  remediation: Enable CloudTrail logging
+  compliance_mappings:
+    PCI_DSS:
+    - '10.1'
+    - '10.2'
+    - '10.3'
+    ISO_27001:
+    - A.12.4.1
+    - A.12.4.3
+    ISO_27701:
+    - 6.9.4.1
+    SOC_2:
+    - CC7.2
+    - CC7.3
+    GDPR:
+    - Art.30
+    - Art.33
+    ISMS_P:
+    - 2.9.1
+    - 2.9.3
+  attack_scenarios:
+  - technique: Undetected Privilege Escalation and Persistence
+    description: 'Without CloudTrail, an attacker performs privilege escalation, creates
+      backdoor IAM users, assumes roles, and installs persistence mechanisms with
+      zero audit trail. Incident response teams have no evidence of the compromise.
+
+      '
+    mitre_tactic: Defense Evasion (TA0005)
+    impact: 'Complete lack of audit logging, inability to detect attacks, compromised
+      incident response capabilities.
+
+      '
+    threat_source: ADVERSARIAL
+- check_id: vpc_flow_logs_enabled
+  title: VPC Flow Logs Enabled
+  description: Ensure VPC has flow logs enabled
+  severity: MODERATE
+  resource_types:
+  - aws_vpc
+  detection_logic:
+    field_path: enable_dns_support
+    operator: exists
+    sub_resource_type: aws_flow_log
+    sub_resource_link_field: vpc_id
+  remediation: Enable VPC flow logs for network monitoring
+  compliance_mappings:
+    PCI_DSS:
+    - '10.2'
+    - '10.3'
+    ISO_27001:
+    - A.12.4.1
+    SOC_2:
+    - CC7.2
+    GDPR:
+    - Art.33
+    ISMS_P:
+    - 2.9.1
+  attack_scenarios:
+  - technique: Undetected Lateral Movement and C2
+    description: 'Without VPC Flow Logs, network-based attacks go undetected. An attacker
+      performs port scanning, connects to unauthorized systems, and establishes C2
+      channels without network visibility or correlation capabilities.
+
+      '
+    mitre_tactic: Defense Evasion (TA0005)
+    impact: 'Invisible network attacks, undetected lateral movement, inability to
+      trace exfiltration paths.
+
+      '
+    threat_source: ADVERSARIAL
+- check_id: ebs_default_encryption
+  title: EBS Default Encryption Enabled
+  description: Ensure EBS default encryption is enabled in the account
+  severity: MODERATE
+  resource_types:
+  - aws_ebs_encryption_by_default
+  detection_logic:
+    field_path: enabled
+    operator: equals
+    expected_value: true
+  remediation: Enable EBS default encryption
+  compliance_mappings:
+    PCI_DSS:
+    - '3.4'
+    ISO_27001:
+    - A.10.1.1
+    SOC_2:
+    - CC6.7
+    ISMS_P:
+    - 2.5.1
+  attack_scenarios:
+  - technique: Cross-Account EBS Snapshot Theft
+    description: 'Without default encryption, new volumes are unencrypted. An attacker
+      creates snapshots, shares them across accounts, or attaches volumes to forensics
+      instances to extract data directly from the filesystem.
+
+      '
+    mitre_tactic: Exfiltration (TA0010)
+    impact: 'Unencrypted storage exposure, snapshot-based data theft across accounts,
+      complete filesystem extraction.
+
+      '
+    threat_source: ADVERSARIAL
+- check_id: config_recorder_enabled
+  title: AWS Config Recorder Enabled
+  description: Ensure AWS Config recorder is enabled for configuration tracking
+  severity: MODERATE
+  resource_types:
+  - aws_config_configuration_recorder_status
+  detection_logic:
+    field_path: is_enabled
+    operator: equals
+    expected_value: true
+  remediation: Enable AWS Config recorder
+  compliance_mappings:
+    PCI_DSS:
+    - '10.1'
+    - '11.5'
+    ISO_27001:
+    - A.12.4.1
+    SOC_2:
+    - CC7.1
+    ISMS_P:
+    - 2.9.1
+    - 2.11.1
+  attack_scenarios:
+  - technique: Undetected Backdoor Installation
+    description: 'Without Config recording, an attacker modifies security groups,
+      disables encryption, changes IAM policies, and creates backdoor resources without
+      triggering configuration change alerts. Drift goes undetected.
+
+      '
+    mitre_tactic: Persistence (TA0003)
+    impact: 'Undetected infrastructure changes, no configuration audit trail, undetected
+      persistence mechanisms.
+
+      '
+    threat_source: ADVERSARIAL
+- check_id: kms_key_rotation
+  title: KMS Key Rotation Enabled
+  description: Ensure KMS keys have automatic rotation enabled
+  severity: MODERATE
+  resource_types:
+  - aws_kms_key
+  detection_logic:
+    field_path: enable_key_rotation
+    operator: equals
+    expected_value: true
+  remediation: Enable automatic key rotation on KMS keys
+  compliance_mappings:
+    PCI_DSS:
+    - 3.6.4
+    ISO_27001:
+    - A.10.1.2
+    SOC_2:
+    - CC6.1
+    GDPR:
+    - Art.32
+    ISMS_P:
+    - 2.5.2
+  attack_scenarios:
+  - technique: Long-Term Cryptographic Key Compromise
+    description: 'KMS keys without rotation remain in use indefinitely. If a key is
+      compromised through insider threat or supply chain attack, all data encrypted
+      with that key — past and future — remains vulnerable to bulk decryption.
+
+      '
+    mitre_tactic: Exfiltration (TA0010)
+    impact: 'Long-term cryptographic exposure, bulk decryption of historical data
+      with a single compromised key.
+
+      '
+    threat_source: ADVERSARIAL

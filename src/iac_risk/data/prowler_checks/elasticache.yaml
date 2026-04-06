@@ -1,0 +1,159 @@
+- check_id: elasticache_encryption_transit
+  title: ElastiCache Encryption in Transit
+  description: Ensure ElastiCache replication group has encryption in transit enabled
+  severity: HIGH
+  resource_types:
+  - aws_elasticache_replication_group
+  detection_logic:
+    field_path: transit_encryption_enabled
+    operator: equals
+    expected_value: true
+  remediation: Enable transit_encryption_enabled on the ElastiCache replication group
+  compliance_mappings:
+    PCI_DSS:
+    - '4.1'
+    - 4.1.1
+    ISO_27001:
+    - A.10.1.1
+    - A.13.1.1
+    ISO_27701:
+    - 6.7.1.1
+    SOC_2:
+    - CC6.1
+    - CC6.7
+    GDPR:
+    - Art.32
+    - Art.25
+    ISMS_P:
+    - 2.5.1
+    - 2.7.1
+  attack_scenarios:
+  - technique: Redis Traffic Sniffing
+    description: >
+      An attacker with network access sniffs unencrypted Redis traffic
+      between application servers and ElastiCache. They capture cached
+      session tokens, authentication data, and sensitive application state
+      transmitted in plaintext over the network.
+    mitre_tactic: "Credential Access (TA0006)"
+    impact: >
+      Session token theft, exposure of cached credentials and sensitive
+      data, ability to replay captured commands.
+    threat_source: ADVERSARIAL
+- check_id: elasticache_encryption_rest
+  title: ElastiCache Encryption at Rest
+  description: Ensure ElastiCache replication group has encryption at rest enabled
+  severity: HIGH
+  resource_types:
+  - aws_elasticache_replication_group
+  detection_logic:
+    field_path: at_rest_encryption_enabled
+    operator: equals
+    expected_value: true
+  remediation: Enable at_rest_encryption_enabled on the ElastiCache replication group
+  compliance_mappings:
+    PCI_DSS:
+    - '3.4'
+    - 3.4.1
+    ISO_27001:
+    - A.10.1.1
+    ISO_27701:
+    - 6.7.1.1
+    SOC_2:
+    - CC6.1
+    - CC6.7
+    GDPR:
+    - Art.32
+    - Art.25
+    ISMS_P:
+    - 2.5.1
+    - 2.7.1
+  attack_scenarios:
+  - technique: ElastiCache Snapshot Data Extraction
+    description: >
+      An attacker exports an unencrypted ElastiCache backup or gains access
+      to the underlying storage. Without encryption at rest, all cached data
+      including session tokens and application secrets are readable in
+      plaintext from the backup.
+    mitre_tactic: "Exfiltration (TA0010)"
+    impact: >
+      Exposure of cached data from backups, session token extraction,
+      sensitive application data available in plaintext.
+    threat_source: ADVERSARIAL
+- check_id: elasticache_auth_token
+  title: ElastiCache AUTH Token Required
+  description: Ensure ElastiCache replication group requires AUTH token for access
+  severity: HIGH
+  resource_types:
+  - aws_elasticache_replication_group
+  detection_logic:
+    field_path: auth_token
+    operator: exists
+  remediation: Configure an auth_token on the ElastiCache replication group
+  compliance_mappings:
+    PCI_DSS:
+    - 8.2.1
+    - 7.1.1
+    ISO_27001:
+    - A.9.4.1
+    - A.9.2.3
+    ISO_27701:
+    - 6.6.2.1
+    SOC_2:
+    - CC6.1
+    - CC6.3
+    GDPR:
+    - Art.32
+    ISMS_P:
+    - 2.6.1
+    - 2.6.4
+  attack_scenarios:
+  - technique: Unauthenticated Redis Access
+    description: >
+      Without AUTH token, any client with network access to the ElastiCache
+      endpoint can execute Redis commands without authentication. An attacker
+      reads all cached data, modifies cache entries to poison application
+      behavior, or flushes the entire cache.
+    mitre_tactic: "Initial Access (TA0001)"
+    impact: >
+      Unauthorized read/write access to all cached data, cache poisoning
+      affecting application integrity, denial of service via cache flush.
+    threat_source: ADVERSARIAL
+- check_id: elasticache_automatic_backup
+  title: ElastiCache Automatic Backup
+  description: Ensure ElastiCache replication group has automatic backups enabled
+  severity: MODERATE
+  resource_types:
+  - aws_elasticache_replication_group
+  detection_logic:
+    field_path: snapshot_retention_limit
+    operator: greater_than
+    expected_value: 0
+  remediation: Set snapshot_retention_limit to at least 1 day for automatic backups
+  compliance_mappings:
+    PCI_DSS:
+    - '10.7'
+    ISO_27001:
+    - A.12.3.1
+    - A.17.1.1
+    ISO_27701:
+    - 6.9.1.1
+    SOC_2:
+    - CC6.1
+    - A1.2
+    GDPR:
+    - Art.5
+    - Art.32
+    ISMS_P:
+    - 2.12.1
+  attack_scenarios:
+  - technique: Cache Destruction Without Recovery
+    description: >
+      An attacker flushes or corrupts the ElastiCache cluster, destroying
+      all cached session data and application state. Without automatic
+      backups, the cache must be rebuilt from scratch, causing extended
+      performance degradation and potential session loss for all users.
+    mitre_tactic: "Impact (TA0040)"
+    impact: >
+      Loss of all cached data, extended cache warm-up period, session
+      invalidation for all users, degraded application performance.
+    threat_source: ADVERSARIAL

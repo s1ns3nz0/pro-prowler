@@ -1,0 +1,304 @@
+- check_id: ec2_sg_ssh_open_to_world
+  title: Security Group SSH Open to World
+  description: Ensure no security group allows SSH (port 22) from 0.0.0.0/0
+  severity: CRITICAL
+  resource_types:
+  - aws_security_group
+  detection_logic:
+    field_path: ingress
+    operator: not_contains
+    expected_value:
+      from_port: 22
+      to_port: 22
+      cidr_blocks:
+      - 0.0.0.0/0
+  remediation: Restrict SSH access to specific IP ranges
+  compliance_mappings:
+    PCI_DSS:
+    - 1.2.1
+    - 1.3.1
+    ISO_27001:
+    - A.13.1.1
+    - A.9.1.2
+    ISO_27701:
+    - 6.10.1.1
+    SOC_2:
+    - CC6.1
+    - CC6.6
+    GDPR:
+    - Art.32
+    ISMS_P:
+    - 2.8.1
+    - 2.8.2
+  attack_scenarios:
+  - technique: SSH Brute Force and Credential Stuffing
+    description: 'An attacker discovers SSH exposed to 0.0.0.0/0 via port scanning
+      and performs dictionary attacks or credential stuffing. Once inside, they steal
+      AWS credentials from instance metadata.
+
+      '
+    mitre_tactic: Initial Access (TA0001)
+    impact: 'Full OS compromise, ability to steal EC2 IAM role credentials, lateral
+      movement to other AWS services, data theft.
+
+      '
+    threat_source: ADVERSARIAL
+  - technique: SSH Key Exploitation and Persistence
+    description: 'After gaining initial SSH access, the attacker installs backdoor
+      SSH keys, creates cron-based reverse shells, and uses the instance as a pivot
+      point into the VPC.
+
+      '
+    mitre_tactic: Persistence (TA0003)
+    impact: 'Persistent unauthorized access, VPC-internal lateral movement, long-term
+      data exfiltration channel.
+
+      '
+    threat_source: ADVERSARIAL
+- check_id: ec2_sg_rdp_open_to_world
+  title: Security Group RDP Open to World
+  description: Ensure no security group allows RDP (port 3389) from 0.0.0.0/0
+  severity: CRITICAL
+  resource_types:
+  - aws_security_group
+  detection_logic:
+    field_path: ingress
+    operator: not_contains
+    expected_value:
+      from_port: 3389
+      to_port: 3389
+      cidr_blocks:
+      - 0.0.0.0/0
+  remediation: Restrict RDP access to specific IP ranges
+  compliance_mappings:
+    PCI_DSS:
+    - 1.2.1
+    - 1.3.1
+    ISO_27001:
+    - A.13.1.1
+    SOC_2:
+    - CC6.1
+    - CC6.6
+    GDPR:
+    - Art.32
+    ISMS_P:
+    - 2.8.1
+    - 2.8.2
+  attack_scenarios:
+  - technique: RDP Brute Force and BlueKeep Exploitation
+    description: 'An attacker discovers RDP exposed globally and performs brute-force
+      attacks or exploits RDP vulnerabilities like BlueKeep (CVE-2019-0708) for unauthenticated
+      remote code execution.
+
+      '
+    mitre_tactic: Initial Access (TA0001)
+    impact: 'Complete OS-level compromise, interactive GUI access, ransomware deployment,
+      lateral movement within the VPC.
+
+      '
+    threat_source: ADVERSARIAL
+- check_id: ec2_sg_unrestricted_egress
+  title: Security Group Unrestricted Egress
+  description: Ensure security group does not allow unrestricted outbound traffic
+    on all ports
+  severity: MODERATE
+  resource_types:
+  - aws_security_group
+  detection_logic:
+    field_path: egress
+    operator: not_contains
+    expected_value:
+      from_port: 0
+      to_port: 0
+      protocol: '-1'
+      cidr_blocks:
+      - 0.0.0.0/0
+  remediation: Restrict egress to required destinations and ports only
+  compliance_mappings:
+    PCI_DSS:
+    - 1.2.1
+    ISO_27001:
+    - A.13.1.1
+    SOC_2:
+    - CC6.6
+    ISMS_P:
+    - 2.8.1
+  attack_scenarios:
+  - technique: C2 Channel Establishment and Data Exfiltration
+    description: 'A compromised instance with unrestricted egress establishes reverse
+      shells to attacker-controlled C2 servers and exfiltrates data over arbitrary
+      ports without network controls.
+
+      '
+    mitre_tactic: Command & Control (TA0011)
+    impact: 'Uncontrolled outbound data exfiltration, persistent C2 channels, ability
+      to download additional attack tools.
+
+      '
+    threat_source: ADVERSARIAL
+- check_id: ec2_imdsv2_required
+  title: EC2 Instance IMDSv2 Required
+  description: Ensure EC2 instances require IMDSv2 (Instance Metadata Service v2)
+  severity: HIGH
+  resource_types:
+  - aws_instance
+  detection_logic:
+    field_path: metadata_options.0.http_tokens
+    operator: equals
+    expected_value: required
+  remediation: Configure metadata_options to require http_tokens (IMDSv2)
+  compliance_mappings:
+    PCI_DSS:
+    - 2.2.4
+    ISO_27001:
+    - A.14.1.2
+    SOC_2:
+    - CC6.1
+    GDPR:
+    - Art.32
+    ISMS_P:
+    - 2.6.7
+    - 2.10.1
+  attack_scenarios:
+  - technique: SSRF to IMDS Credential Theft
+    description: 'An attacker exploits an application SSRF vulnerability to request
+      http://169.254.169.254/latest/meta-data/iam/ security-credentials/ and steals
+      temporary IAM role credentials. IMDSv1 requires only a simple GET request with
+      no token.
+
+      '
+    mitre_tactic: Credential Access (TA0006)
+    impact: 'Theft of IAM role credentials, API access to AWS services with instance
+      role permissions, privilege escalation.
+
+      '
+    threat_source: ADVERSARIAL
+  - technique: IMDS-Based Cloud Pivot
+    description: 'After stealing IMDS credentials via SSRF, the attacker uses them
+      from outside the instance to enumerate and access other AWS resources — S3 buckets,
+      DynamoDB tables, Lambda functions — escalating impact beyond the single instance.
+
+      '
+    mitre_tactic: Privilege Escalation (TA0004)
+    impact: 'Lateral movement across AWS services, access to sensitive data stores,
+      potential full account compromise.
+
+      '
+    threat_source: ADVERSARIAL
+- check_id: ec2_ebs_encryption
+  title: EC2 EBS Volume Encryption
+  description: Ensure EC2 instance root block device is encrypted
+  severity: HIGH
+  resource_types:
+  - aws_instance
+  detection_logic:
+    field_path: root_block_device.0.encrypted
+    operator: equals
+    expected_value: true
+  remediation: Enable encryption on the root block device
+  compliance_mappings:
+    PCI_DSS:
+    - '3.4'
+    ISO_27001:
+    - A.10.1.1
+    ISO_27701:
+    - 6.7.1.1
+    SOC_2:
+    - CC6.1
+    - CC6.7
+    GDPR:
+    - Art.32
+    - Art.25
+    ISMS_P:
+    - 2.5.1
+    - 2.7.1
+  attack_scenarios:
+  - technique: EBS Snapshot Data Theft
+    description: 'An attacker creates a snapshot of an unencrypted EBS volume, shares
+      it to an account they control, attaches it to their own instance, and mounts
+      the filesystem to extract secrets, database files, and application credentials.
+
+      '
+    mitre_tactic: Exfiltration (TA0010)
+    impact: 'Full filesystem access including secrets, cached credentials, database
+      files, and application configuration.
+
+      '
+    threat_source: ADVERSARIAL
+- check_id: ec2_instance_detailed_monitoring
+  title: EC2 Instance Detailed Monitoring
+  description: Ensure EC2 instance has detailed monitoring enabled
+  severity: LOW
+  resource_types:
+  - aws_instance
+  detection_logic:
+    field_path: monitoring
+    operator: equals
+    expected_value: true
+  remediation: Enable detailed monitoring on the EC2 instance
+  compliance_mappings:
+    PCI_DSS:
+    - '10.2'
+    ISO_27001:
+    - A.12.4.1
+    - A.12.1.3
+    ISO_27701:
+    - 6.9.4.1
+    SOC_2:
+    - CC7.2
+    GDPR:
+    - Art.30
+    ISMS_P:
+    - 2.9.1
+    - 2.11.1
+  attack_scenarios:
+  - technique: Low-Resolution Attack Detection Evasion
+    description: >
+      Without detailed monitoring, CloudWatch metrics are reported at
+      5-minute intervals instead of 1-minute. An attacker performs short
+      burst attacks such as CPU-intensive cryptomining or rapid data
+      exfiltration that complete within the 5-minute gap, evading detection.
+    mitre_tactic: "Defense Evasion (TA0005)"
+    impact: >
+      Missed detection of short-duration attacks, delayed anomaly
+      alerting, reduced visibility into instance performance patterns.
+    threat_source: ADVERSARIAL
+- check_id: ec2_instance_public_ip
+  title: EC2 Instance No Public IP
+  description: Ensure EC2 instance does not have auto-assign public IP enabled
+  severity: MODERATE
+  resource_types:
+  - aws_instance
+  detection_logic:
+    field_path: associate_public_ip_address
+    operator: equals
+    expected_value: false
+  remediation: Disable auto-assign public IP and use NAT gateway for outbound access
+  compliance_mappings:
+    PCI_DSS:
+    - 1.2.1
+    - 1.3.1
+    ISO_27001:
+    - A.13.1.1
+    ISO_27701:
+    - 6.10.1.1
+    SOC_2:
+    - CC6.1
+    - CC6.6
+    GDPR:
+    - Art.32
+    ISMS_P:
+    - 2.8.1
+    - 2.8.2
+  attack_scenarios:
+  - technique: Direct Internet-Facing Instance Exploitation
+    description: >
+      An EC2 instance with a public IP is directly reachable from the
+      internet. An attacker scans the IP, discovers exposed services, and
+      exploits vulnerabilities without traversing any network security
+      controls such as a load balancer or WAF.
+    mitre_tactic: "Initial Access (TA0001)"
+    impact: >
+      Direct exploitation of instance services from the internet,
+      bypassing network security controls, unauthorized access.
+    threat_source: ADVERSARIAL

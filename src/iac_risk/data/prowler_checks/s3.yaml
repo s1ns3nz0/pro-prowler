@@ -1,0 +1,346 @@
+- check_id: s3_bucket_public_access_block
+  title: S3 Bucket Public Access Block
+  description: Ensure S3 bucket has public access block enabled
+  severity: CRITICAL
+  resource_types:
+  - aws_s3_bucket
+  detection_logic:
+    field_path: block_public_acls
+    operator: equals
+    expected_value: true
+    sub_resource_type: aws_s3_bucket_public_access_block
+    sub_resource_link_field: bucket
+  remediation: Enable public access block on the S3 bucket
+  compliance_mappings:
+    PCI_DSS:
+    - 1.3.1
+    - 1.3.2
+    ISO_27001:
+    - A.13.1.1
+    ISO_27701:
+    - 6.10.1.1
+    SOC_2:
+    - CC6.1
+    - CC6.6
+    GDPR:
+    - Art.25
+    - Art.32
+    ISMS_P:
+    - 2.6.1
+    - 2.8.2
+  attack_scenarios:
+  - technique: S3 Bucket Enumeration and Exfiltration
+    description: 'An attacker discovers the bucket without public access block and
+      enumerates its contents using aws s3 ls. They download sensitive objects including
+      credentials, source code, and customer data.
+
+      '
+    mitre_tactic: Initial Access (TA0001)
+    impact: 'Unauthorized access to sensitive data including customer PII, source
+      code, configuration secrets, and database backups.
+
+      '
+    threat_source: ADVERSARIAL
+  - technique: Public Bucket Content Modification
+    description: 'If write access is also available, an attacker modifies bucket contents
+      to serve malicious files, deface hosted content, or inject backdoors into application
+      artifacts stored in the bucket.
+
+      '
+    mitre_tactic: Impact (TA0040)
+    impact: 'Supply chain compromise via modified application artifacts, defacement
+      of hosted content, malware distribution.
+
+      '
+    threat_source: ADVERSARIAL
+- check_id: s3_bucket_versioning_enabled
+  title: S3 Bucket Versioning Enabled
+  description: Ensure S3 bucket has versioning enabled to protect against accidental
+    deletion
+  severity: MODERATE
+  resource_types:
+  - aws_s3_bucket
+  detection_logic:
+    field_path: versioning_configuration.0.status
+    operator: equals
+    expected_value: Enabled
+    sub_resource_type: aws_s3_bucket_versioning
+    sub_resource_link_field: bucket
+    legacy_field_path: versioning.0.enabled
+    legacy_expected_value: true
+  remediation: Enable versioning on the S3 bucket
+  compliance_mappings:
+    PCI_DSS:
+    - 10.5.1
+    ISO_27001:
+    - A.12.3.1
+    SOC_2:
+    - CC6.1
+    GDPR:
+    - Art.5
+    ISMS_P:
+    - 2.12.1
+  attack_scenarios:
+  - technique: S3 Ransomware via Object Deletion
+    description: 'An attacker with write access deletes all objects in a bucket without
+      versioning. Without version history, deleted objects cannot be recovered, enabling
+      a destructive ransomware attack.
+
+      '
+    mitre_tactic: Impact (TA0040)
+    impact: 'Permanent data loss, inability to recover from deletions, business disruption,
+      potential regulatory violations.
+
+      '
+    threat_source: ADVERSARIAL
+- check_id: s3_bucket_encryption_enabled
+  title: S3 Bucket Server-Side Encryption
+  description: Ensure S3 bucket has server-side encryption enabled
+  severity: HIGH
+  resource_types:
+  - aws_s3_bucket
+  detection_logic:
+    field_path: rule.0.apply_server_side_encryption_by_default.0.sse_algorithm
+    operator: exists
+    sub_resource_type: aws_s3_bucket_server_side_encryption_configuration
+    sub_resource_link_field: bucket
+    legacy_field_path: server_side_encryption_configuration.0.rule.0.apply_server_side_encryption_by_default.0.sse_algorithm
+  remediation: Enable server-side encryption (AES256 or aws:kms) on the S3 bucket
+  compliance_mappings:
+    PCI_DSS:
+    - '3.4'
+    - 3.4.1
+    ISO_27001:
+    - A.10.1.1
+    ISO_27701:
+    - 6.7.1.1
+    SOC_2:
+    - CC6.1
+    - CC6.7
+    GDPR:
+    - Art.32
+    - Art.25
+    ISMS_P:
+    - 2.5.1
+    - 2.7.1
+  attack_scenarios:
+  - technique: Plaintext Data Exfiltration
+    description: 'An attacker with S3 read access downloads unencrypted objects and
+      reads sensitive data in plaintext. No encryption key is needed, lowering the
+      barrier to data theft.
+
+      '
+    mitre_tactic: Exfiltration (TA0010)
+    impact: 'Sensitive data exposure in plaintext, regulatory compliance violations
+      for encryption-at-rest requirements.
+
+      '
+    threat_source: ADVERSARIAL
+  - technique: S3 Object Ransomware via Re-Encryption
+    description: 'An attacker creates a custom KMS key, re-encrypts objects with their
+      own key, and deletes the originals. The organization cannot decrypt without
+      paying ransom.
+
+      '
+    mitre_tactic: Impact (TA0040)
+    impact: 'Data held hostage, inability to access encrypted objects without attacker''s
+      key, business disruption.
+
+      '
+    threat_source: ADVERSARIAL
+- check_id: s3_bucket_logging_enabled
+  title: S3 Bucket Access Logging
+  description: Ensure S3 bucket has access logging enabled
+  severity: MODERATE
+  resource_types:
+  - aws_s3_bucket
+  detection_logic:
+    field_path: target_bucket
+    operator: exists
+    sub_resource_type: aws_s3_bucket_logging
+    sub_resource_link_field: bucket
+    legacy_field_path: logging.0.target_bucket
+  remediation: Enable access logging on the S3 bucket
+  compliance_mappings:
+    PCI_DSS:
+    - '10.2'
+    - '10.3'
+    ISO_27001:
+    - A.12.4.1
+    SOC_2:
+    - CC7.2
+    GDPR:
+    - Art.30
+    - Art.33
+    ISMS_P:
+    - 2.9.1
+    - 2.9.3
+  attack_scenarios:
+  - technique: Undetected Data Access and Exfiltration
+    description: 'Without access logging, an attacker performs reconnaissance and
+      data exfiltration without leaving audit trails. Incident response teams cannot
+      determine what was accessed or stolen.
+
+      '
+    mitre_tactic: Defense Evasion (TA0005)
+    impact: 'Inability to detect unauthorized access, delayed incident detection,
+      loss of forensic evidence.
+
+      '
+    threat_source: ADVERSARIAL
+- check_id: s3_bucket_acl_not_public
+  title: S3 Bucket ACL Not Public
+  description: Ensure S3 bucket ACL does not allow public access
+  severity: CRITICAL
+  resource_types:
+  - aws_s3_bucket_acl
+  detection_logic:
+    field_path: acl
+    operator: equals
+    expected_value: private
+  remediation: Set the S3 bucket ACL to private
+  compliance_mappings:
+    PCI_DSS:
+    - 1.3.1
+    - '7.1'
+    ISO_27001:
+    - A.9.4.1
+    - A.13.1.1
+    SOC_2:
+    - CC6.1
+    - CC6.6
+    GDPR:
+    - Art.25
+    - Art.32
+    ISMS_P:
+    - 2.6.1
+    - 2.8.2
+  attack_scenarios:
+  - technique: Anonymous Public Bucket Access
+    description: 'A bucket with public ACL is discoverable and accessible by anyone
+      on the internet. Attackers scan for public buckets using enumeration tools and
+      download all objects anonymously.
+
+      '
+    mitre_tactic: Initial Access (TA0001)
+    impact: 'Worldwide unauthorized access, IP theft, source code exposure, compromise
+      of credentials or API keys stored in bucket.
+
+      '
+    threat_source: ADVERSARIAL
+- check_id: s3_bucket_lifecycle_policy
+  title: S3 Bucket Lifecycle Policy
+  description: Ensure S3 bucket has a lifecycle policy configured
+  severity: LOW
+  resource_types:
+  - aws_s3_bucket
+  detection_logic:
+    field_path: rule
+    operator: exists
+    sub_resource_type: aws_s3_bucket_lifecycle_configuration
+    sub_resource_link_field: bucket
+    legacy_field_path: lifecycle_rule
+  remediation: Configure a lifecycle policy on the S3 bucket
+  compliance_mappings:
+    ISO_27001:
+    - A.12.3.1
+    SOC_2:
+    - CC6.1
+    ISMS_P:
+    - 3.4.1
+  attack_scenarios:
+  - technique: Historical Data Harvesting
+    description: 'Without lifecycle policies, sensitive data remains indefinitely.
+      An attacker who gains access retrieves historical objects, old configs, or archived
+      credentials from extended time windows.
+
+      '
+    mitre_tactic: Exfiltration (TA0010)
+    impact: 'Extended exposure of sensitive historical data, larger window for discovery
+      and exfiltration.
+
+      '
+    threat_source: ADVERSARIAL
+- check_id: s3_bucket_mfa_delete
+  title: S3 Bucket MFA Delete Enabled
+  description: Ensure S3 bucket has MFA delete enabled for versioned objects
+  severity: HIGH
+  resource_types:
+  - aws_s3_bucket
+  detection_logic:
+    field_path: versioning.0.mfa_delete
+    operator: equals
+    expected_value: true
+    sub_resource_type: aws_s3_bucket_versioning
+    sub_resource_link_field: bucket
+  remediation: Enable MFA delete on the S3 bucket versioning configuration
+  compliance_mappings:
+    PCI_DSS:
+    - 10.5.1
+    - '7.1'
+    ISO_27001:
+    - A.9.4.1
+    - A.12.3.1
+    ISO_27701:
+    - 6.6.2.1
+    SOC_2:
+    - CC6.1
+    - CC6.3
+    GDPR:
+    - Art.32
+    ISMS_P:
+    - 2.6.1
+    - 2.12.1
+  attack_scenarios:
+  - technique: Versioned Object Permanent Deletion
+    description: >
+      An attacker with S3 delete permissions permanently removes versioned
+      objects and delete markers from a bucket. Without MFA delete, no
+      additional authentication is required to destroy all object versions,
+      enabling complete and irreversible data loss.
+    mitre_tactic: "Impact (TA0040)"
+    impact: >
+      Permanent destruction of all object versions, inability to recover
+      deleted data, bypassing versioning protections.
+    threat_source: ADVERSARIAL
+- check_id: s3_bucket_ssl_requests_only
+  title: S3 Bucket SSL Requests Only
+  description: Ensure S3 bucket policy enforces SSL-only access
+  severity: HIGH
+  resource_types:
+  - aws_s3_bucket_policy
+  detection_logic:
+    field_path: policy
+    operator: contains
+    expected_value: aws:SecureTransport
+  remediation: Add a bucket policy condition requiring aws:SecureTransport to be true
+  compliance_mappings:
+    PCI_DSS:
+    - '4.1'
+    - 4.1.1
+    ISO_27001:
+    - A.10.1.1
+    - A.13.1.1
+    ISO_27701:
+    - 6.7.1.1
+    SOC_2:
+    - CC6.1
+    - CC6.7
+    GDPR:
+    - Art.32
+    - Art.25
+    ISMS_P:
+    - 2.5.1
+    - 2.7.1
+  attack_scenarios:
+  - technique: Unencrypted S3 Traffic Interception
+    description: >
+      Without SSL enforcement, S3 API requests and data transfers can occur
+      over unencrypted HTTP. An attacker on the network path intercepts
+      plaintext object uploads and downloads, capturing sensitive data
+      and AWS credentials in transit.
+    mitre_tactic: "Credential Access (TA0006)"
+    impact: >
+      Interception of data in transit, credential theft from unencrypted
+      API calls, exposure of object contents during transfer.
+    threat_source: ADVERSARIAL

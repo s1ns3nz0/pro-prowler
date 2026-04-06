@@ -23,7 +23,7 @@ from iac_risk.services.prowler_catalog import ProwlerCatalog
 logger = logging.getLogger(__name__)
 
 _DEFAULT_MAPPINGS_DIR = (
-    Path(__file__).resolve().parent.parent.parent.parent / "data" / "compliance_mappings"
+    Path(__file__).resolve().parent.parent / "data" / "compliance_mappings"
 )
 
 _FRAMEWORK_TO_FILE: dict[ComplianceFramework, str] = {

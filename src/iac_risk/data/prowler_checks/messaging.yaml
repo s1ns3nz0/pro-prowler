@@ -1,0 +1,160 @@
+- check_id: sns_topic_encryption
+  title: SNS Topic Encryption with KMS
+  description: Ensure SNS topic is encrypted with a KMS key
+  severity: HIGH
+  resource_types:
+  - aws_sns_topic
+  detection_logic:
+    field_path: kms_master_key_id
+    operator: exists
+  remediation: Set kms_master_key_id on the SNS topic for server-side encryption
+  compliance_mappings:
+    PCI_DSS:
+    - '3.4'
+    - 3.4.1
+    ISO_27001:
+    - A.10.1.1
+    ISO_27701:
+    - 6.7.1.1
+    SOC_2:
+    - CC6.1
+    - CC6.7
+    GDPR:
+    - Art.32
+    - Art.25
+    ISMS_P:
+    - 2.5.1
+    - 2.7.1
+  attack_scenarios:
+  - technique: SNS Message Interception
+    description: >
+      An attacker with access to SNS topic data reads unencrypted messages
+      containing sensitive notifications, alerts, and application events.
+      Without KMS encryption, messages at rest in SNS are not protected
+      by customer-controlled encryption keys.
+    mitre_tactic: "Exfiltration (TA0010)"
+    impact: >
+      Exposure of sensitive notification data, interception of application
+      events and alerts, potential credential leakage in messages.
+    threat_source: ADVERSARIAL
+- check_id: sqs_queue_encryption
+  title: SQS Queue Encryption with KMS
+  description: Ensure SQS queue is encrypted with a KMS key
+  severity: HIGH
+  resource_types:
+  - aws_sqs_queue
+  detection_logic:
+    field_path: kms_master_key_id
+    operator: exists
+  remediation: Set kms_master_key_id on the SQS queue for server-side encryption
+  compliance_mappings:
+    PCI_DSS:
+    - '3.4'
+    - 3.4.1
+    ISO_27001:
+    - A.10.1.1
+    ISO_27701:
+    - 6.7.1.1
+    SOC_2:
+    - CC6.1
+    - CC6.7
+    GDPR:
+    - Art.32
+    - Art.25
+    ISMS_P:
+    - 2.5.1
+    - 2.7.1
+  attack_scenarios:
+  - technique: SQS Message Data Extraction
+    description: >
+      An attacker with SQS read permissions receives and reads unencrypted
+      queue messages containing sensitive payloads. Without KMS encryption,
+      the messages are stored and transmitted without customer-controlled
+      encryption boundaries.
+    mitre_tactic: "Exfiltration (TA0010)"
+    impact: >
+      Exposure of queued message data, interception of sensitive
+      application payloads, potential credential leakage.
+    threat_source: ADVERSARIAL
+- check_id: sqs_queue_policy_public
+  title: SQS Queue Not Publicly Accessible
+  description: Ensure SQS queue policy does not allow public access
+  severity: CRITICAL
+  resource_types:
+  - aws_sqs_queue_policy
+  detection_logic:
+    field_path: policy
+    operator: not_contains
+    expected_value: '"Principal":"*"'
+  remediation: Restrict the SQS queue policy to specific AWS accounts or services
+  compliance_mappings:
+    PCI_DSS:
+    - 1.3.1
+    - 7.1.1
+    ISO_27001:
+    - A.9.4.1
+    - A.13.1.1
+    ISO_27701:
+    - 6.6.2.1
+    SOC_2:
+    - CC6.1
+    - CC6.6
+    GDPR:
+    - Art.32
+    - Art.25
+    ISMS_P:
+    - 2.6.1
+    - 2.8.2
+  attack_scenarios:
+  - technique: Public SQS Queue Message Injection
+    description: >
+      An attacker discovers a publicly accessible SQS queue and injects
+      malicious messages that are processed by downstream consumers. This
+      can trigger unintended actions, exploit deserialization vulnerabilities,
+      or poison application data pipelines.
+    mitre_tactic: "Initial Access (TA0001)"
+    impact: >
+      Injection of malicious messages into processing pipelines,
+      exploitation of message consumers, data integrity compromise.
+    threat_source: ADVERSARIAL
+- check_id: sns_topic_policy_public
+  title: SNS Topic Not Publicly Accessible
+  description: Ensure SNS topic policy does not allow public access
+  severity: CRITICAL
+  resource_types:
+  - aws_sns_topic_policy
+  detection_logic:
+    field_path: policy
+    operator: not_contains
+    expected_value: '"Principal":"*"'
+  remediation: Restrict the SNS topic policy to specific AWS accounts or services
+  compliance_mappings:
+    PCI_DSS:
+    - 1.3.1
+    - 7.1.1
+    ISO_27001:
+    - A.9.4.1
+    - A.13.1.1
+    ISO_27701:
+    - 6.6.2.1
+    SOC_2:
+    - CC6.1
+    - CC6.6
+    GDPR:
+    - Art.32
+    - Art.25
+    ISMS_P:
+    - 2.6.1
+    - 2.8.2
+  attack_scenarios:
+  - technique: Public SNS Topic Subscription and Data Leak
+    description: >
+      An attacker subscribes to a publicly accessible SNS topic and receives
+      all published messages. This exposes sensitive notifications, system
+      alerts, and application events to unauthorized third parties without
+      the organization's knowledge.
+    mitre_tactic: "Exfiltration (TA0010)"
+    impact: >
+      Unauthorized receipt of all topic messages, exposure of sensitive
+      notifications and alerts, data leakage to attacker-controlled endpoints.
+    threat_source: ADVERSARIAL

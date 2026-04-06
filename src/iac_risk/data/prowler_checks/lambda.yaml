@@ -1,0 +1,191 @@
+- check_id: lambda_function_public_access
+  title: Lambda Function Public Access
+  description: Ensure Lambda function URL auth type is not NONE
+  severity: CRITICAL
+  resource_types:
+  - aws_lambda_function_url
+  detection_logic:
+    field_path: authorization_type
+    operator: not_equals
+    expected_value: NONE
+  remediation: Set Lambda function URL authorization_type to AWS_IAM
+  compliance_mappings:
+    PCI_DSS:
+    - 1.3.1
+    - 7.1.1
+    ISO_27001:
+    - A.9.4.1
+    - A.13.1.1
+    ISO_27701:
+    - 6.6.2.1
+    SOC_2:
+    - CC6.1
+    - CC6.6
+    GDPR:
+    - Art.32
+    - Art.25
+    ISMS_P:
+    - 2.6.1
+    - 2.8.2
+  attack_scenarios:
+  - technique: Unauthenticated Lambda Function Invocation
+    description: >
+      An attacker discovers a Lambda function URL with no authentication and
+      invokes it directly with crafted payloads. This can trigger unintended
+      actions such as data exfiltration, privilege escalation through the
+      function's IAM role, or abuse of downstream services.
+    mitre_tactic: "Initial Access (TA0001)"
+    impact: >
+      Unauthorized code execution with the function's IAM role permissions,
+      potential access to databases, S3 buckets, and other AWS services.
+    threat_source: ADVERSARIAL
+- check_id: lambda_function_vpc_config
+  title: Lambda Function VPC Configuration
+  description: Ensure Lambda function is deployed within a VPC
+  severity: MODERATE
+  resource_types:
+  - aws_lambda_function
+  detection_logic:
+    field_path: vpc_config.0.subnet_ids
+    operator: exists
+  remediation: Configure vpc_config with appropriate subnet_ids and security_group_ids
+  compliance_mappings:
+    PCI_DSS:
+    - 1.2.1
+    - 1.3.1
+    ISO_27001:
+    - A.13.1.1
+    ISO_27701:
+    - 6.10.1.1
+    SOC_2:
+    - CC6.6
+    GDPR:
+    - Art.32
+    ISMS_P:
+    - 2.8.1
+    - 2.8.2
+  attack_scenarios:
+  - technique: Lambda Internet-Based Data Exfiltration
+    description: >
+      A Lambda function outside a VPC has unrestricted internet access. An
+      attacker who compromises the function code or dependencies can exfiltrate
+      data to external endpoints without network-level controls.
+    mitre_tactic: "Exfiltration (TA0010)"
+    impact: >
+      Uncontrolled outbound data exfiltration, inability to apply network
+      security controls, lack of VPC Flow Log visibility.
+    threat_source: ADVERSARIAL
+- check_id: lambda_function_tracing
+  title: Lambda Function X-Ray Tracing
+  description: Ensure Lambda function has X-Ray active tracing enabled
+  severity: MODERATE
+  resource_types:
+  - aws_lambda_function
+  detection_logic:
+    field_path: tracing_config.0.mode
+    operator: equals
+    expected_value: Active
+  remediation: Set tracing_config mode to Active for X-Ray tracing
+  compliance_mappings:
+    PCI_DSS:
+    - '10.2'
+    ISO_27001:
+    - A.12.4.1
+    ISO_27701:
+    - 6.9.4.1
+    SOC_2:
+    - CC7.2
+    GDPR:
+    - Art.30
+    ISMS_P:
+    - 2.9.1
+    - 2.9.3
+  attack_scenarios:
+  - technique: Undetected Lambda Abuse
+    description: >
+      Without active tracing, an attacker who compromises a Lambda function
+      can perform malicious operations without leaving observable traces. The
+      lack of distributed tracing makes it difficult to correlate attacks
+      across service boundaries.
+    mitre_tactic: "Defense Evasion (TA0005)"
+    impact: >
+      Inability to trace malicious invocations, delayed incident detection,
+      loss of forensic evidence across distributed services.
+    threat_source: ADVERSARIAL
+- check_id: lambda_function_dlq
+  title: Lambda Function Dead Letter Queue
+  description: Ensure Lambda function has a dead letter queue configured
+  severity: MODERATE
+  resource_types:
+  - aws_lambda_function
+  detection_logic:
+    field_path: dead_letter_config.0.target_arn
+    operator: exists
+  remediation: Configure dead_letter_config with an SQS queue or SNS topic ARN
+  compliance_mappings:
+    PCI_DSS:
+    - '10.7'
+    ISO_27001:
+    - A.12.1.1
+    - A.17.1.1
+    ISO_27701:
+    - 6.9.1.1
+    SOC_2:
+    - CC7.5
+    - A1.2
+    GDPR:
+    - Art.5
+    ISMS_P:
+    - 2.12.1
+  attack_scenarios:
+  - technique: Silent Data Loss via Failed Invocations
+    description: >
+      Without a dead letter queue, failed Lambda invocations silently discard
+      events. An attacker can cause intentional failures through malformed
+      payloads, causing critical events to be permanently lost without any
+      notification or retry mechanism.
+    mitre_tactic: "Impact (TA0040)"
+    impact: >
+      Permanent loss of failed event data, undetected processing failures,
+      potential data integrity issues in downstream systems.
+    threat_source: ADVERSARIAL
+- check_id: lambda_function_env_encryption
+  title: Lambda Function Environment Variable Encryption
+  description: Ensure Lambda function environment variables are encrypted with a customer-managed KMS key
+  severity: HIGH
+  resource_types:
+  - aws_lambda_function
+  detection_logic:
+    field_path: kms_key_arn
+    operator: exists
+  remediation: Set kms_key_arn to a customer-managed KMS key for environment variable encryption
+  compliance_mappings:
+    PCI_DSS:
+    - '3.4'
+    - 3.4.1
+    ISO_27001:
+    - A.10.1.1
+    - A.10.1.2
+    ISO_27701:
+    - 6.7.1.1
+    SOC_2:
+    - CC6.1
+    - CC6.7
+    GDPR:
+    - Art.32
+    - Art.25
+    ISMS_P:
+    - 2.5.1
+    - 2.7.1
+  attack_scenarios:
+  - technique: Lambda Environment Variable Secret Extraction
+    description: >
+      An attacker with Lambda read permissions extracts environment variables
+      containing database credentials, API keys, and secrets. Without
+      customer-managed KMS encryption, the default AWS-managed key provides
+      weaker access control boundaries.
+    mitre_tactic: "Credential Access (TA0006)"
+    impact: >
+      Exposure of secrets stored in environment variables, credential theft
+      enabling lateral movement to databases and external services.
+    threat_source: ADVERSARIAL
