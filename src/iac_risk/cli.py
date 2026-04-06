@@ -54,6 +54,8 @@ def _resolve_config() -> dict:
         cfg["ollama_base_url"] = os.environ["OLLAMA_BASE_URL"]
     if os.environ.get("AWS_PROFILE"):
         cfg["aws_profile"] = os.environ["AWS_PROFILE"]
+    if os.environ.get("GITHUB_TOKEN"):
+        cfg["github_token"] = os.environ["GITHUB_TOKEN"]
     return cfg
 
 
@@ -107,16 +109,11 @@ def _require_configured() -> dict:
     _load_env()
     cfg = _resolve_config()
 
+    # Default server to localhost if not configured
+    # (Docker compose runs on port from .env or 8000)
     if not cfg.get("server"):
-        click.echo(
-            "Error: Pro-Prowler is not configured.\n\n"
-            "Run 'pro-prowler configure' to set up:\n"
-            "  - Server URL (where the dashboard runs)\n"
-            "  - LLM API key (for AI analysis)\n"
-            "  - AWS profile (optional)\n",
-            err=True,
-        )
-        raise SystemExit(1)
+        port = os.environ.get("PORT", "8000")
+        cfg["server"] = f"http://localhost:{port}"
 
     return cfg
 
