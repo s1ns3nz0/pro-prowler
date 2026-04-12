@@ -215,43 +215,25 @@ Selecting <strong style="color:var(--fail)">&#9888; Accept</strong> requires a j
 <table class="resource-table">
 <thead>
 <tr>
-<th>Resource <span class="hint" data-tip="Terraform resource address and type">?</span></th>
-<th>Criticality <span class="hint" data-tip="Asset criticality based on business context (data sensitivity, compliance scope)">?</span></th>
+<th>Resource <span class="hint" data-tip="Terraform resource address, type, and key configuration">?</span></th>
 <th>Findings <span class="hint" data-tip="Number of failed Prowler checks on this resource">?</span></th>
-<th>Max Risk <span class="hint" data-tip="Highest risk score (1-25) among findings. Likelihood x Impact per NIST SP 800-30">?</span></th>
-<th>Status <span class="hint" data-tip="Worst severity among findings. PASS means all applicable checks passed">?</span></th>
-<th>Attack Path <span class="hint" data-tip="AI-generated chained attack scenario describing how findings could be exploited together">?</span></th>
+<th>Score <span class="hint" data-tip="Resource security score (0-100). Deductions: CRITICAL -15, HIGH -8, MODERATE -3, LOW -1">?</span></th>
 </tr>
 </thead>
 <tbody>
-{% for res in resources|sort(attribute='max_risk_score', reverse=True) %}
+{% for res in resources|sort(attribute='resource_score') %}
 <tr class="resource-row"
     data-address="{{ res.address }}"
     data-global-key="{{ service_name }}:{{ res.address }}"
     onclick="toggleDetail(this, '{{ service_name }}', '{{ res.address }}')">
 <td>
 <code style="font-size:.85rem">{{ res.address }}</code>
-<div style="font-size:.75rem;color:var(--muted)">{{ res.resource_type }}</div>
+<div style="font-size:.75rem;color:var(--muted)">{{ res.resource_type }}{% if res.config_summary %} &mdash; {{ res.config_summary }}{% endif %}</div>
 </td>
-<td><span class="ctx-badge ctx-{{ res.asset_criticality }}">{{ res.asset_criticality }}</span></td>
 <td>{% if res.finding_count > 0 %}<strong>{{ res.finding_count }}</strong>{% else %}<span style="color:var(--muted)">0</span>{% endif %}</td>
 <td>
-{% if res.max_risk_score > 0 %}
-<span class="severity-badge severity-{% if res.max_risk_score >= 16 %}CRITICAL{% elif res.max_risk_score >= 9 %}HIGH{% elif res.max_risk_score >= 4 %}MODERATE{% else %}LOW{% endif %}">{{ res.max_risk_score }}/25</span>
-{% else %}<span style="color:var(--pass);font-size:.85rem">0/25</span>{% endif %}
-</td>
-<td>
-{% if res.finding_count == 0 %}<span style="color:var(--pass)">&#10003; PASS</span>
-{% else %}
-{% set severities = res.findings|map(attribute='severity')|list %}
-{% if 'CRITICAL' in severities %}<span class="severity-badge severity-CRITICAL">CRITICAL</span>
-{% elif 'HIGH' in severities %}<span class="severity-badge severity-HIGH">HIGH</span>
-{% elif 'MODERATE' in severities %}<span class="severity-badge severity-MODERATE">MODERATE</span>
-{% else %}<span class="severity-badge severity-LOW">LOW</span>{% endif %}
-{% endif %}
-</td>
-<td style="font-size:.8rem;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-{% if res.attack_path %}{{ res.attack_path.risk_summary }}{% else %}-{% endif %}
+{% set score = res.resource_score %}
+<span class="severity-badge severity-{% if score < 40 %}CRITICAL{% elif score < 60 %}HIGH{% elif score < 75 %}MODERATE{% elif score < 90 %}LOW{% else %}PASS{% endif %}" style="{% if score >= 90 %}background:rgba(16,185,129,.15);color:var(--pass){% endif %}">{{ score }}/100</span>
 </td>
 </tr>
 {% endfor %}
@@ -357,6 +339,87 @@ Object.keys(complianceData).forEach(function(fw) {
 function buildLeftPanel(res, address, prefix) {
   var lhtml = '';
 
+  // Resources with no applicable checks and no business context — minimal display
+  var hasFindings = res.findings && res.findings.length > 0;
+  var hasPassedChecks = res.passed_checks && res.passed_checks.length > 0;
+  var hasContext = res.context_source === 'business_context';
+  if (!hasFindings && !hasPassedChecks && !hasContext) {
+    lhtml += '<div style="padding:16px;background:var(--surface);border-radius:8px;border:1px solid var(--border)">';
+    lhtml += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
+    lhtml += '<span style="color:var(--pass);font-size:1.1rem">&#10003;</span>';
+    lhtml += '<strong style="font-size:.9rem">' + esc(res.resource_type) + '</strong>';
+    lhtml += '</div>';
+    if (res.resource_description) {
+      lhtml += '<p style="font-size:.85rem;margin:0 0 6px 0">' + esc(res.resource_description) + '</p>';
+    }
+    if (res.config_summary) {
+      lhtml += '<div style="font-size:.8rem;color:var(--muted);font-family:monospace;background:var(--bg);padding:6px 8px;border-radius:4px;margin-bottom:8px">' + esc(res.config_summary) + '</div>';
+    }
+    lhtml += '<div style="font-size:.8rem;color:var(--muted)">No Prowler checks currently cover this resource type. Security posture should be reviewed based on organizational policies.</div>';
+    lhtml += '</div>';
+    lhtml += buildRiskCommentBlock(address, prefix);
+    return lhtml;
+  }
+
+  // Resources that passed all checks (no findings) — simplified display
+  if (!hasFindings && hasPassedChecks) {
+    lhtml += '<div style="margin-bottom:12px;padding:10px 12px;background:rgba(16,185,129,.08);border-left:3px solid var(--pass);border-radius:4px">';
+    lhtml += '<div style="display:flex;justify-content:space-between;align-items:center">';
+    lhtml += '<strong style="font-size:.85rem;color:var(--pass)">All Checks Passed</strong>';
+    lhtml += '<span class="severity-badge" style="background:rgba(16,185,129,.15);color:var(--pass)">PASS (' + res.passed_checks.length + '/' + res.passed_checks.length + ')</span>';
+    lhtml += '</div>';
+    lhtml += '<p style="font-size:.85rem;margin:6px 0 0 0">This resource passed all ' + res.passed_checks.length + ' applicable security checks.</p>';
+    lhtml += '</div>';
+    if (hasContext) {
+      // Still show criticality if business context exists
+      var editId = 'crit-' + prefix;
+      lhtml += '<div style="margin-bottom:12px;padding:10px;background:var(--surface);border-radius:8px;border:1px solid var(--border);font-size:.85rem">';
+      lhtml += '<span class="ctx-badge ctx-' + (res.asset_criticality || 'MODERATE') + '">Criticality: ' + (res.asset_criticality || 'MODERATE') + '</span> ';
+      lhtml += '<span class="ctx-badge" style="background:rgba(113,113,122,.1);color:var(--muted)">Data: ' + (res.data_classification || 'internal') + '</span>';
+      if (res.context_notes) lhtml += '<div style="color:var(--muted);margin-top:6px;font-size:.8rem">' + esc(res.context_notes) + '</div>';
+      lhtml += '</div>';
+    }
+    // Passed checks list
+    lhtml += '<h4 style="font-size:.9rem;margin:12px 0 4px;color:var(--pass)">&#10003; Passed Checks (' + res.passed_checks.length + ')</h4>';
+    res.passed_checks.forEach(function(c) {
+      lhtml += '<div class="check-item"><span class="check-pass">&#10003;</span> <strong>' + esc(c.title) + '</strong> <span style="color:var(--muted);font-size:.8rem">(' + c.check_id + ')</span></div>';
+    });
+    lhtml += buildRiskCommentBlock(address, prefix);
+    return lhtml;
+  }
+
+  // --- Resources with findings: full detail view ---
+
+  // Risk Summary (top of detail panel)
+  var score = res.resource_score || 100;
+  var riskLabel = 'PASS';
+  var riskColor = 'var(--pass)';
+  var riskBg = 'rgba(16,185,129,.08)';
+  var riskBorder = 'var(--pass)';
+  if (score < 40) { riskLabel = 'CRITICAL'; riskColor = 'var(--fail)'; riskBg = 'rgba(220,38,38,.08)'; riskBorder = 'var(--fail)'; }
+  else if (score < 60) { riskLabel = 'HIGH'; riskColor = 'var(--high)'; riskBg = 'rgba(249,115,22,.08)'; riskBorder = 'var(--high)'; }
+  else if (score < 75) { riskLabel = 'MODERATE'; riskColor = 'var(--moderate)'; riskBg = 'rgba(234,179,8,.08)'; riskBorder = 'var(--moderate)'; }
+  else if (score < 90) { riskLabel = 'LOW'; riskColor = 'var(--info)'; riskBg = 'rgba(59,130,246,.08)'; riskBorder = 'var(--info)'; }
+
+  lhtml += '<div style="margin-bottom:12px;padding:10px 12px;background:' + riskBg + ';border-left:3px solid ' + riskBorder + ';border-radius:4px">';
+  lhtml += '<div style="display:flex;justify-content:space-between;align-items:center">';
+  lhtml += '<strong style="font-size:.85rem;color:' + riskColor + '">Risk Summary</strong>';
+  lhtml += '<span class="severity-badge severity-' + riskLabel + '" style="' + (score >= 90 ? 'background:rgba(16,185,129,.15);color:var(--pass)' : '') + '">' + score + '/100</span>';
+  lhtml += '</div>';
+  if (res.finding_count > 0) {
+    lhtml += '<p style="font-size:.85rem;margin:6px 0 0 0">' + res.finding_count + ' finding(s)';
+    if (res.asset_criticality && res.context_source === 'business_context') {
+      lhtml += ', ' + res.asset_criticality + ' criticality';
+    }
+    if (res.attack_path && res.attack_path.risk_summary) {
+      lhtml += ' &mdash; ' + esc(res.attack_path.risk_summary);
+    }
+    lhtml += '</p>';
+  } else {
+    lhtml += '<p style="font-size:.85rem;margin:6px 0 0 0;color:var(--pass)">All security checks passed for this resource.</p>';
+  }
+  lhtml += '</div>';
+
   // Criticality Assessment (with edit capability)
   var editId = 'crit-' + prefix;
   lhtml += '<div style="margin-bottom:12px;padding:12px;background:var(--surface);border-radius:8px;border:1px solid var(--border)">';
@@ -364,6 +427,7 @@ function buildLeftPanel(res, address, prefix) {
   lhtml += '<h4 style="font-size:.9rem;margin:0">Asset Criticality Assessment</h4>';
   lhtml += '<button onclick="toggleCritEdit(\'' + editId + '\',\'' + esc(address) + '\')" id="edit-btn-' + editId + '" style="padding:4px 12px;border-radius:6px;border:1px solid var(--info);background:rgba(59,130,246,.1);color:var(--info);cursor:pointer;font-size:.8rem;font-weight:600">&#9998; Edit</button>';
   lhtml += '</div>';
+  lhtml += '<p style="font-size:.8rem;color:var(--muted);margin:0 0 8px 0">How critical this resource is to business operations. Criticality and data classification are determined by AI analysis of your business context documents, compliance requirements, and application architecture. Higher criticality elevates the severity of any findings on this resource.</p>';
 
   // Display mode
   lhtml += '<div id="crit-display-' + editId + '">';
@@ -427,11 +491,13 @@ function buildLeftPanel(res, address, prefix) {
   if (res.attack_path) {
     lhtml += '<div style="padding:10px;background:rgba(249,115,22,.05);border:1px solid rgba(249,115,22,.2);border-radius:6px;margin-bottom:12px">';
     lhtml += '<strong style="color:var(--high);font-size:.85rem">&#9889; Attack Path</strong>';
+    lhtml += '<p style="font-size:.8rem;color:var(--muted);margin:4px 0 8px 0">AI-generated chained attack scenario showing how the misconfigurations found on this resource could be exploited together by a real-world attacker, from initial access to business impact.</p>';
     lhtml += '<p style="font-size:.85rem;margin-top:4px">' + esc(res.attack_path.attack_narrative) + '</p>';
     if (res.attack_path.risk_summary) lhtml += '<p style="font-size:.8rem;color:var(--muted);margin-top:4px;font-style:italic">' + esc(res.attack_path.risk_summary) + '</p>';
     // Resource-level threat actors
     if (res.attack_path.threat_actors && res.attack_path.threat_actors.length > 0) {
       lhtml += '<div style="margin-top:8px;font-size:.75rem;text-transform:uppercase;color:var(--muted);letter-spacing:.05em">Threat Actors Targeting This Resource</div>';
+      lhtml += '<p style="font-size:.8rem;color:var(--muted);margin:2px 0 6px 0">Who would exploit these weaknesses, their capability level, techniques they would use, and the business impact if they succeed.</p>';
       res.attack_path.threat_actors.forEach(function(ta) {
         lhtml += buildThreatActorCard(ta);
       });
@@ -441,7 +507,8 @@ function buildLeftPanel(res, address, prefix) {
 
   // Findings
   if (res.findings && res.findings.length > 0) {
-    lhtml += '<h4 style="font-size:.9rem;margin-bottom:8px;color:var(--fail)">&#10007; Failed Checks (' + res.findings.length + ')</h4>';
+    lhtml += '<h4 style="font-size:.9rem;margin-bottom:4px;color:var(--fail)">&#10007; Failed Checks (' + res.findings.length + ')</h4>';
+    lhtml += '<p style="font-size:.8rem;color:var(--muted);margin:0 0 8px 0">Security checks from the Prowler catalog that this resource failed. Each finding includes the severity, what was expected vs actual, remediation guidance, and CIA impact assessment.</p>';
     res.findings.forEach(function(f) {
       lhtml += '<div style="margin-bottom:10px;padding:10px;background:var(--bg);border-radius:6px;border:1px solid var(--border)">';
       lhtml += '<div><span class="severity-badge severity-' + f.severity + '">' + f.severity + '</span> ';
@@ -483,15 +550,14 @@ function buildLeftPanel(res, address, prefix) {
 
   // Passed checks
   if (res.passed_checks && res.passed_checks.length > 0) {
-    lhtml += '<h4 style="font-size:.9rem;margin:12px 0 8px;color:var(--pass)">&#10003; Passed Checks (' + res.passed_checks.length + ')</h4>';
+    lhtml += '<h4 style="font-size:.9rem;margin:12px 0 4px;color:var(--pass)">&#10003; Passed Checks (' + res.passed_checks.length + ')</h4>';
+    lhtml += '<p style="font-size:.8rem;color:var(--muted);margin:0 0 8px 0">Security checks that this resource already satisfies. These represent correctly configured security controls.</p>';
     res.passed_checks.forEach(function(c) {
       lhtml += '<div class="check-item"><span class="check-pass">&#10003;</span> <strong>' + esc(c.title) + '</strong> <span style="color:var(--muted);font-size:.8rem">(' + c.check_id + ')</span></div>';
     });
   }
 
-  if ((!res.findings || res.findings.length === 0) && (!res.passed_checks || res.passed_checks.length === 0)) {
-    lhtml += '<div style="padding:16px;text-align:center;color:var(--muted)">No Prowler checks applicable to this resource type.</div>';
-  }
+  // (no-checks and all-passed cases handled at top of buildLeftPanel)
 
   // Risk comments
   lhtml += buildRiskCommentBlock(address, prefix);

@@ -134,6 +134,71 @@ def _get_checks_for_resource(resource_type: str) -> list[dict]:
     ]
 
 
+_RESOURCE_DESCRIPTIONS: dict[str, str] = {
+    "aws_s3_bucket": "Object storage for files, backups, logs, and static assets",
+    "aws_s3_bucket_versioning": "Version control for S3 bucket objects",
+    "aws_s3_bucket_server_side_encryption_configuration": (
+        "Encryption settings for S3 bucket data at rest"
+    ),
+    "aws_s3_bucket_public_access_block": (
+        "Controls preventing public access to S3 bucket contents"
+    ),
+    "aws_s3_bucket_lifecycle_configuration": (
+        "Lifecycle rules for automatic object transition and expiration"
+    ),
+    "aws_s3_bucket_logging": "Access logging configuration for S3 bucket audit trail",
+    "aws_db_instance": "Managed relational database (RDS) for structured data storage",
+    "aws_db_subnet_group": "Database subnet placement controlling network isolation",
+    "aws_instance": "Virtual server (EC2) running application workloads",
+    "aws_lb": "Application or Network Load Balancer distributing traffic to backends",
+    "aws_lb_listener": "Load balancer listener defining how incoming traffic is routed",
+    "aws_lb_target_group": "Routes traffic from the load balancer to backend compute targets",
+    "aws_security_group": "Firewall rules controlling inbound and outbound network traffic",
+    "aws_vpc": "Virtual Private Cloud providing network isolation for all resources",
+    "aws_subnet": "Network subdivision within a VPC for resource placement",
+    "aws_route_table": "Network routing rules controlling traffic flow between subnets",
+    "aws_route_table_association": "Links a subnet to a route table for traffic routing",
+    "aws_internet_gateway": "Enables internet connectivity for public-facing resources",
+    "aws_nat_gateway": "Enables outbound internet access for private subnet resources",
+    "aws_eip": "Static public IP address for consistent external addressing",
+    "aws_ecs_cluster": "Container orchestration cluster managing ECS services",
+    "aws_ecs_service": "Long-running containerized application with scaling and health checks",
+    "aws_ecs_task_definition": (
+        "Container config defining image, CPU, memory, and networking"
+    ),
+    "aws_ecr_repository": "Private Docker image registry for container deployments",
+    "aws_iam_role": "Identity role defining permissions for AWS services and users",
+    "aws_iam_role_policy_attachment": "Attaches a permissions policy to an IAM role",
+    "aws_iam_policy": "Set of permissions defining what actions are allowed on which resources",
+    "aws_lambda_function": "Serverless function executing code without managing servers",
+    "aws_cloudwatch_log_group": "Centralized log storage for monitoring and audit",
+    "aws_kms_key": "Encryption key for protecting data at rest and in transit",
+    "aws_secretsmanager_secret": "Secure storage for credentials, API keys, and sensitive config",
+    "aws_dynamodb_table": "NoSQL database for high-performance key-value workloads",
+    "aws_sqs_queue": "Message queue for decoupling and async communication between services",
+    "aws_sns_topic": "Pub/sub messaging for notifications and event distribution",
+    "aws_cloudfront_distribution": "CDN for global content delivery and edge caching",
+    "aws_cloudtrail": "API activity logging for security audit and compliance",
+    "aws_api_gateway_stage": "API Gateway deployment stage (dev/staging/prod)",
+}
+
+
+def _calc_resource_score(findings: list[dict]) -> int:
+    """Calculate a 0-100 composite score for a resource."""
+    weights = {
+        "CRITICAL": 15,
+        "HIGH": 8,
+        "MODERATE": 3,
+        "LOW": 1,
+        "INFORMATIONAL": 0,
+    }
+    deduction = sum(
+        weights.get(f.get("severity", "MODERATE"), 3)
+        for f in findings
+    )
+    return max(0, 100 - deduction)
+
+
 def _build_service_groups(
     result: PipelineResult,
 ) -> dict[str, list[dict]]:
@@ -235,6 +300,7 @@ def _build_service_groups(
             "attack_path": paths_by_resource.get(addr),
             "after_config": res.get("after_config") or {},
             "max_risk_score": max_risk,
+            "resource_score": _calc_resource_score(resource_findings),
             "finding_count": len(resource_findings),
             "asset_criticality": criticality,
             "data_classification": data_class,
@@ -243,6 +309,8 @@ def _build_service_groups(
             "context_source": context_source,
             "passed_checks": passed_checks,
             "total_checks_evaluated": len(all_checks),
+            "resource_description": _RESOURCE_DESCRIPTIONS.get(rtype, ""),
+            "config_summary": res.get("config_summary", ""),
         })
 
     # Add any findings for resources not in parser output
@@ -260,6 +328,7 @@ def _build_service_groups(
                 "attack_path": paths_by_resource.get(addr),
                 "after_config": {},
                 "max_risk_score": max_risk,
+                "resource_score": _calc_resource_score(fs),
                 "finding_count": len(fs),
                 "asset_criticality": "MODERATE",
                 "data_classification": "internal",
@@ -268,14 +337,17 @@ def _build_service_groups(
                 "context_source": "default",
                 "passed_checks": [],
                 "total_checks_evaluated": 0,
+                "resource_description": _RESOURCE_DESCRIPTIONS.get(rtype, ""),
+                "config_summary": "",
             })
 
-    # Sort groups by finding count (most findings first)
+    # Sort groups by lowest resource score (worst first)
     sorted_groups = dict(
         sorted(
             groups.items(),
-            key=lambda x: sum(len(r["findings"]) for r in x[1]),
-            reverse=True,
+            key=lambda x: min(
+                (r["resource_score"] for r in x[1]), default=100,
+            ),
         )
     )
     return sorted_groups
@@ -391,6 +463,9 @@ async def dashboard_detail(
                     "context_source": r.get("context_source", "default"),
                     "passed_checks": r.get("passed_checks", []),
                     "total_checks_evaluated": r.get("total_checks_evaluated", 0),
+                    "resource_score": r.get("resource_score", 100),
+                    "resource_description": r.get("resource_description", ""),
+                    "config_summary": r.get("config_summary", ""),
                 }
                 for r in resources
             ]

@@ -68,6 +68,10 @@ class ResourceChange(BaseModel):
         default=None,
         description="Risk acceptance from @risk- HCL comments",
     )
+    config_summary: str = Field(
+        default="",
+        description="Human-readable summary of key config traits",
+    )
 
 
 class ResourceInventory(BaseModel):
