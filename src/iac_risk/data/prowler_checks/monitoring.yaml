@@ -27,16 +27,63 @@
     - 2.7.1
   attack_scenarios:
   - technique: CloudWatch Log Data Exfiltration
-    description: >
-      An attacker with CloudWatch Logs read permissions accesses unencrypted
-      log data containing application secrets, database queries, API keys,
-      and PII. Without KMS encryption, log data is not protected by
-      customer-controlled encryption boundaries.
-    mitre_tactic: "Exfiltration (TA0010)"
-    impact: >
-      Exposure of sensitive log data, credential leakage from application
-      logs, PII exposure in audit and application logs.
+    description: 'An attacker with CloudWatch Logs read permissions accesses unencrypted log data containing
+      application secrets, database queries, API keys, and PII. Without KMS encryption, log data is not
+      protected by customer-controlled encryption boundaries.
+
+      '
+    mitre_tactic: Exfiltration (TA0010)
+    impact: 'Exposure of sensitive log data, credential leakage from application logs, PII exposure in
+      audit and application logs.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 2
+    rationale: Keyword-based classification from check cloudwatch_log_encryption
+  threat_actors:
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - CloudWatch Log Data Exfiltration
+    mitre_tactics: &id001
+    - TA0009
+    - TA0040
+    impact: 'Exposure of sensitive log data, credential leakage from application logs, PII exposure in
+      audit and application logs.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - CloudWatch Log Data Exfiltration
+    mitre_tactics: &id002
+    - TA0006
+    - TA0004
+    impact: 'Exposure of sensitive log data, credential leakage from application logs, PII exposure in
+      audit and application logs.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - CloudWatch Log Data Exfiltration
+    mitre_tactics: &id003
+    - TA0001
+    - TA0009
+    - TA0040
+    impact: 'Exposure of sensitive log data, credential leakage from application logs, PII exposure in
+      audit and application logs.
+
+      '
 - check_id: cloudwatch_log_retention
   title: CloudWatch Log Retention Policy
   description: Ensure CloudWatch log group has a retention policy configured
@@ -65,16 +112,56 @@
     - 3.4.1
   attack_scenarios:
   - technique: Indefinite Log Retention Data Exposure
-    description: >
-      Without a retention policy, logs accumulate indefinitely, increasing
-      the attack surface. An attacker who gains log access obtains years
-      of historical data containing old credentials, PII, and system
-      information that should have been purged.
-    mitre_tactic: "Exfiltration (TA0010)"
-    impact: >
-      Extended exposure window for sensitive log data, GDPR data
-      retention violations, increased storage costs.
+    description: 'Without a retention policy, logs accumulate indefinitely, increasing the attack surface.
+      An attacker who gains log access obtains years of historical data containing old credentials, PII,
+      and system information that should have been purged.
+
+      '
+    mitre_tactic: Exfiltration (TA0010)
+    impact: 'Extended exposure window for sensitive log data, GDPR data retention violations, increased
+      storage costs.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 3
+    rationale: Keyword-based classification from check cloudwatch_log_retention
+  threat_actors:
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Indefinite Log Retention Data Exposure
+    mitre_tactics: *id001
+    impact: 'Extended exposure window for sensitive log data, GDPR data retention violations, increased
+      storage costs.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - Indefinite Log Retention Data Exposure
+    mitre_tactics: *id002
+    impact: 'Extended exposure window for sensitive log data, GDPR data retention violations, increased
+      storage costs.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Indefinite Log Retention Data Exposure
+    mitre_tactics: *id003
+    impact: 'Extended exposure window for sensitive log data, GDPR data retention violations, increased
+      storage costs.
+
+      '
 - check_id: guardduty_enabled
   title: GuardDuty Detector Enabled
   description: Ensure GuardDuty threat detection is enabled in the account
@@ -106,16 +193,45 @@
     - 2.11.1
   attack_scenarios:
   - technique: Undetected Account Compromise
-    description: >
-      Without GuardDuty, automated threat detection for IAM credential
-      abuse, cryptocurrency mining, unauthorized API calls, and data
-      exfiltration is absent. An attacker operates freely without triggering
-      any behavioral anomaly alerts.
-    mitre_tactic: "Defense Evasion (TA0005)"
-    impact: >
-      No automated threat detection, undetected credential abuse,
-      extended attacker dwell time without alerting.
+    description: 'Without GuardDuty, automated threat detection for IAM credential abuse, cryptocurrency
+      mining, unauthorized API calls, and data exfiltration is absent. An attacker operates freely without
+      triggering any behavioral anomaly alerts.
+
+      '
+    mitre_tactic: Defense Evasion (TA0005)
+    impact: 'No automated threat detection, undetected credential abuse, extended attacker dwell time
+      without alerting.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 3
+    rationale: Keyword-based classification from check guardduty_enabled
+  threat_actors:
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Undetected Account Compromise
+    mitre_tactics: *id003
+    impact: 'No automated threat detection, undetected credential abuse, extended attacker dwell time
+      without alerting.
+
+      '
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Undetected Account Compromise
+    mitre_tactics: *id001
+    impact: 'No automated threat detection, undetected credential abuse, extended attacker dwell time
+      without alerting.
+
+      '
 - check_id: securityhub_enabled
   title: Security Hub Enabled
   description: Ensure AWS Security Hub is enabled for centralized security findings
@@ -143,16 +259,45 @@
     - 2.11.1
   attack_scenarios:
   - technique: Fragmented Security Visibility
-    description: >
-      Without Security Hub, security findings from GuardDuty, Config,
-      Inspector, and other services remain siloed. An attacker exploits
-      gaps between disconnected security tools, as no centralized view
-      correlates indicators of compromise across services.
-    mitre_tactic: "Defense Evasion (TA0005)"
-    impact: >
-      Inability to correlate security findings, fragmented incident
-      response, missed attack indicators across services.
+    description: 'Without Security Hub, security findings from GuardDuty, Config, Inspector, and other
+      services remain siloed. An attacker exploits gaps between disconnected security tools, as no centralized
+      view correlates indicators of compromise across services.
+
+      '
+    mitre_tactic: Defense Evasion (TA0005)
+    impact: 'Inability to correlate security findings, fragmented incident response, missed attack indicators
+      across services.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 3
+    rationale: Keyword-based classification from check securityhub_enabled
+  threat_actors:
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Fragmented Security Visibility
+    mitre_tactics: *id003
+    impact: 'Inability to correlate security findings, fragmented incident response, missed attack indicators
+      across services.
+
+      '
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Fragmented Security Visibility
+    mitre_tactics: *id001
+    impact: 'Inability to correlate security findings, fragmented incident response, missed attack indicators
+      across services.
+
+      '
 - check_id: cloudwatch_alarm_action
   title: CloudWatch Alarm Action Configured
   description: Ensure CloudWatch alarms have actions configured for notification
@@ -181,13 +326,42 @@
     - 2.11.2
   attack_scenarios:
   - technique: Silent Alarm Bypass
-    description: >
-      An attacker triggers security-relevant CloudWatch alarms through
-      suspicious activity, but without configured actions, no notifications
-      are sent. Security teams remain unaware of threshold breaches, failed
-      logins, and resource anomalies.
-    mitre_tactic: "Defense Evasion (TA0005)"
-    impact: >
-      Security alarms trigger silently with no notification, delayed
-      detection of security events, ineffective monitoring.
+    description: 'An attacker triggers security-relevant CloudWatch alarms through suspicious activity,
+      but without configured actions, no notifications are sent. Security teams remain unaware of threshold
+      breaches, failed logins, and resource anomalies.
+
+      '
+    mitre_tactic: Defense Evasion (TA0005)
+    impact: 'Security alarms trigger silently with no notification, delayed detection of security events,
+      ineffective monitoring.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 4
+    rationale: Keyword-based classification from check cloudwatch_alarm_action
+  threat_actors:
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Silent Alarm Bypass
+    mitre_tactics: *id003
+    impact: 'Security alarms trigger silently with no notification, delayed detection of security events,
+      ineffective monitoring.
+
+      '
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Silent Alarm Bypass
+    mitre_tactics: *id001
+    impact: 'Security alarms trigger silently with no notification, delayed detection of security events,
+      ineffective monitoring.
+
+      '

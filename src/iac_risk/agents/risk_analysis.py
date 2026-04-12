@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from iac_risk.agents.base import BaseAgent, ValidationResult
+from iac_risk.core.enums import ThreatSource
 from iac_risk.core.schemas import (
     AttackPath,
     BusinessContext,
@@ -17,6 +18,7 @@ from iac_risk.core.schemas import (
     RiskAnalysisInput,
     RiskAnalysisOutput,
     RiskDetermination,
+    ThreatActor,
 )
 from iac_risk.services.content_hash import hash_string
 from iac_risk.services.nist_risk_model import (
@@ -126,15 +128,78 @@ def _save_attack_path_cache(
         json.dump(data, f, indent=2)
 
 
+_STANDARD_ACTORS = [
+    "External Attacker",
+    "Malicious Insider",
+    "Compromised Credentials",
+    "Accidental User",
+    "Supply Chain Attacker",
+]
+
+
+def _aggregate_threat_actors_from_findings(
+    findings: list[Finding],
+) -> list[ThreatActor]:
+    """Aggregate threat actors from findings, deduplicating by actor_name."""
+    by_name: dict[str, ThreatActor] = {}
+    for f in findings:
+        for actor in f.threat_actors:
+            existing = by_name.get(actor.actor_name)
+            if existing is None:
+                by_name[actor.actor_name] = ThreatActor(
+                    actor_name=actor.actor_name,
+                    actor_type=actor.actor_type,
+                    capability=actor.capability,
+                    motivation=actor.motivation,
+                    techniques=list(actor.techniques),
+                    mitre_tactics=list(actor.mitre_tactics),
+                    impact=actor.impact,
+                )
+            else:
+                for tech in actor.techniques:
+                    if tech not in existing.techniques:
+                        existing.techniques.append(tech)
+                for tac in actor.mitre_tactics:
+                    if tac not in existing.mitre_tactics:
+                        existing.mitre_tactics.append(tac)
+    return list(by_name.values())
+
+
+def _extract_json_from_text(text: str) -> Any:
+    """Robust JSON extraction handling markdown and preamble."""
+    text = text.strip()
+    if "```" in text:
+        parts = text.split("```")
+        for part in parts[1::2]:
+            part = part.strip()
+            if part.startswith("json"):
+                part = part[4:].strip()
+            if part.startswith("[") or part.startswith("{"):
+                text = part
+                break
+    if not text.startswith("[") and not text.startswith("{"):
+        start_obj = text.find("{")
+        start_arr = text.find("[")
+        if start_obj == -1:
+            start = start_arr
+        elif start_arr == -1:
+            start = start_obj
+        else:
+            start = min(start_obj, start_arr)
+        if start != -1:
+            text = text[start:]
+    return json.loads(text)
+
+
 def _generate_attack_path_via_llm(
     resource: ResourceChange,
     findings: list[Finding],
     business_context: BusinessContext | None,
     service_category: str,
-) -> tuple[str, str]:
-    """Call LLM to generate a chained attack narrative.
+) -> tuple[str, str, list[ThreatActor]]:
+    """Call LLM to generate attack narrative and structured threat actors.
 
-    Returns (attack_narrative, risk_summary).
+    Returns (attack_narrative, risk_summary, threat_actors).
     Falls back to deterministic generation if LLM unavailable.
     """
     from iac_risk.services.llm_client import call_llm
@@ -143,15 +208,14 @@ def _generate_attack_path_via_llm(
         f"- {f.title} ({f.severity.value}): {f.description}"
         for f in findings
     )
-    scenarios = []
-    for f in findings:
-        for s in f.attack_scenarios:
-            scenarios.append(
-                f"- {s.technique}: {s.description.strip()}"
-            )
-    scenario_text = (
-        "\n".join(scenarios) if scenarios else "No known scenarios."
-    )
+
+    # Collect existing actors from finding-level definitions
+    known_actors = _aggregate_threat_actors_from_findings(findings)
+    known_actor_text = "\n".join(
+        f"- {a.actor_name} ({a.capability}): "
+        f"{', '.join(a.techniques[:3])}"
+        for a in known_actors
+    ) if known_actors else "None"
 
     context_text = ""
     if business_context:
@@ -162,34 +226,71 @@ def _generate_attack_path_via_llm(
         )
 
     system = (
-        "You are a cloud security analyst. Generate attack path "
-        "narratives for AWS infrastructure vulnerabilities. "
-        "Respond in JSON: {\"narrative\": \"...\", \"summary\": \"...\"}"
+        "You are a cloud security analyst. Given AWS resource findings, "
+        "produce a chained attack narrative and identify which threat "
+        "actors (from the standard list) would target this resource. "
+        f"Standard actors: {', '.join(_STANDARD_ACTORS)}. "
+        "Respond ONLY with valid JSON matching this schema:\n"
+        "{\n"
+        '  "narrative": "3-5 sentence chained attack description",\n'
+        '  "summary": "one-line risk summary",\n'
+        '  "threat_actors": [\n'
+        "    {\n"
+        '      "actor_name": "External Attacker",\n'
+        '      "capability": "Low|Medium|High|Nation-state",\n'
+        '      "motivation": "why they would attack this",\n'
+        '      "techniques": ["technique 1", "technique 2"],\n'
+        '      "mitre_tactics": ["TA0001", "TA0009"],\n'
+        '      "impact": "business impact if successful"\n'
+        "    }\n"
+        "  ]\n"
+        "}"
     )
     user_msg = (
         f"AWS {service_category} resource: "
         f"{resource.address} ({resource.resource_type})\n"
-        f"Config: {json.dumps(resource.after_config or {})[:800]}\n"
+        f"Config: {json.dumps(resource.after_config or {})[:600]}\n"
         f"Findings:\n{finding_descriptions}\n"
-        f"Attack techniques:\n{scenario_text}\n"
+        f"Known threat actors from check definitions:\n{known_actor_text}\n"
         f"{context_text}\n\n"
-        f"Generate a 3-5 sentence chained attack narrative and "
-        f"a one-line risk summary."
+        f"Identify 2-4 threat actors from the standard list that would "
+        f"realistically target this resource. Combine techniques from "
+        f"all findings into each actor's techniques list."
     )
 
-    text = call_llm(system, user_msg, max_tokens=1024)
+    text = call_llm(system, user_msg, max_tokens=2048)
     if not text:
         return _generate_attack_path_deterministic(
             resource, findings, service_category,
         )
 
     try:
-        text = text.strip()
-        if text.startswith("```"):
-            text = text.split("\n", 1)[1].rsplit("```", 1)[0]
-        data = json.loads(text)
-        return data.get("narrative", ""), data.get("summary", "")
-    except (json.JSONDecodeError, KeyError):
+        data = _extract_json_from_text(text)
+        narrative = data.get("narrative", "")
+        summary = data.get("summary", "")
+        actors: list[ThreatActor] = []
+        for a in data.get("threat_actors", []):
+            try:
+                # Default actor_type based on name
+                actor_type = ThreatSource.ADVERSARIAL
+                if a.get("actor_name") == "Accidental User":
+                    actor_type = ThreatSource.ACCIDENTAL
+                actors.append(ThreatActor(
+                    actor_name=a.get("actor_name", "External Attacker"),
+                    actor_type=actor_type,
+                    capability=a.get("capability", "Medium"),
+                    motivation=a.get("motivation", ""),
+                    techniques=a.get("techniques", []),
+                    mitre_tactics=a.get("mitre_tactics", []),
+                    impact=a.get("impact", ""),
+                ))
+            except Exception as e:
+                logger.warning("Threat actor parse failed: %s", e)
+        if not actors:
+            actors = known_actors
+        return narrative, summary, actors
+    except Exception as e:
+        logger.warning("Attack path LLM response parse failed: %s", e)
         return _generate_attack_path_deterministic(
             resource, findings, service_category,
         )
@@ -199,11 +300,13 @@ def _generate_attack_path_deterministic(
     resource: ResourceChange,
     findings: list[Finding],
     service_category: str,
-) -> tuple[str, str]:
+) -> tuple[str, str, list[ThreatActor]]:
     """Generate a deterministic attack path from findings (no LLM)."""
     steps = []
     for f in findings:
-        if f.attack_scenarios:
+        if f.threat_actors and f.threat_actors[0].techniques:
+            steps.append(f.threat_actors[0].techniques[0])
+        elif f.attack_scenarios:
             steps.append(f.attack_scenarios[0].technique)
         else:
             steps.append(f.title)
@@ -220,7 +323,8 @@ def _generate_attack_path_deterministic(
         f"{len(findings)} findings on {service_category} resource "
         f"enabling {steps[0] if steps else 'unknown attack'}"
     )
-    return narrative, summary
+    actors = _aggregate_threat_actors_from_findings(findings)
+    return narrative, summary, actors
 
 
 class RiskAnalysisAgent(BaseAgent):
@@ -333,8 +437,8 @@ class RiskAnalysisAgent(BaseAgent):
                     ctx = bc
                     break
 
-            # Generate attack path
-            narrative, summary = _generate_attack_path_via_llm(
+            # Generate attack path with structured threat actors
+            narrative, summary, threat_actors = _generate_attack_path_via_llm(
                 resource, resource_findings, ctx, service,
             )
 
@@ -344,6 +448,7 @@ class RiskAnalysisAgent(BaseAgent):
                 service_category=service,
                 finding_ids=[f.finding_id for f in resource_findings],
                 attack_narrative=narrative,
+                threat_actors=threat_actors,
                 risk_summary=summary,
                 fingerprint=fp,
             )

@@ -30,33 +30,66 @@
     - 2.8.2
   attack_scenarios:
   - technique: S3 Bucket Enumeration and Exfiltration
-    description: 'An attacker discovers the bucket without public access block and
-      enumerates its contents using aws s3 ls. They download sensitive objects including
-      credentials, source code, and customer data.
+    description: 'An attacker discovers the bucket without public access block and enumerates its contents
+      using aws s3 ls. They download sensitive objects including credentials, source code, and customer
+      data.
 
       '
     mitre_tactic: Initial Access (TA0001)
-    impact: 'Unauthorized access to sensitive data including customer PII, source
-      code, configuration secrets, and database backups.
+    impact: 'Unauthorized access to sensitive data including customer PII, source code, configuration
+      secrets, and database backups.
 
       '
     threat_source: ADVERSARIAL
   - technique: Public Bucket Content Modification
-    description: 'If write access is also available, an attacker modifies bucket contents
-      to serve malicious files, deface hosted content, or inject backdoors into application
-      artifacts stored in the bucket.
+    description: 'If write access is also available, an attacker modifies bucket contents to serve malicious
+      files, deface hosted content, or inject backdoors into application artifacts stored in the bucket.
 
       '
     mitre_tactic: Impact (TA0040)
-    impact: 'Supply chain compromise via modified application artifacts, defacement
-      of hosted content, malware distribution.
+    impact: 'Supply chain compromise via modified application artifacts, defacement of hosted content,
+      malware distribution.
 
       '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 5
+    integrity: 2
+    availability: 2
+    rationale: Keyword-based classification from check s3_bucket_public_access_block
+  threat_actors:
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - S3 Bucket Enumeration and Exfiltration
+    - Public Bucket Content Modification
+    mitre_tactics: &id001
+    - TA0001
+    - TA0009
+    - TA0040
+    impact: 'Unauthorized access to sensitive data including customer PII, source code, configuration
+      secrets, and database backups.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - S3 Bucket Enumeration and Exfiltration
+    - Public Bucket Content Modification
+    mitre_tactics: &id003
+    - TA0006
+    - TA0004
+    impact: 'Unauthorized access to sensitive data including customer PII, source code, configuration
+      secrets, and database backups.
+
+      '
 - check_id: s3_bucket_versioning_enabled
   title: S3 Bucket Versioning Enabled
-  description: Ensure S3 bucket has versioning enabled to protect against accidental
-    deletion
+  description: Ensure S3 bucket has versioning enabled to protect against accidental deletion
   severity: MODERATE
   resource_types:
   - aws_s3_bucket
@@ -82,17 +115,57 @@
     - 2.12.1
   attack_scenarios:
   - technique: S3 Ransomware via Object Deletion
-    description: 'An attacker with write access deletes all objects in a bucket without
-      versioning. Without version history, deleted objects cannot be recovered, enabling
-      a destructive ransomware attack.
+    description: 'An attacker with write access deletes all objects in a bucket without versioning. Without
+      version history, deleted objects cannot be recovered, enabling a destructive ransomware attack.
 
       '
     mitre_tactic: Impact (TA0040)
-    impact: 'Permanent data loss, inability to recover from deletions, business disruption,
-      potential regulatory violations.
+    impact: 'Permanent data loss, inability to recover from deletions, business disruption, potential
+      regulatory violations.
 
       '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 3
+    rationale: Keyword-based classification from check s3_bucket_versioning_enabled
+  threat_actors:
+  - actor_name: Accidental User
+    actor_type: ACCIDENTAL
+    capability: Low
+    motivation: Human error, misconfiguration
+    techniques:
+    - S3 Ransomware via Object Deletion
+    mitre_tactics: []
+    impact: 'Permanent data loss, inability to recover from deletions, business disruption, potential
+      regulatory violations.
+
+      '
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - S3 Ransomware via Object Deletion
+    mitre_tactics: &id002
+    - TA0009
+    - TA0040
+    impact: 'Permanent data loss, inability to recover from deletions, business disruption, potential
+      regulatory violations.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - S3 Ransomware via Object Deletion
+    mitre_tactics: *id001
+    impact: 'Permanent data loss, inability to recover from deletions, business disruption, potential
+      regulatory violations.
+
+      '
 - check_id: s3_bucket_encryption_enabled
   title: S3 Bucket Server-Side Encryption
   description: Ensure S3 bucket has server-side encryption enabled
@@ -125,29 +198,69 @@
     - 2.7.1
   attack_scenarios:
   - technique: Plaintext Data Exfiltration
-    description: 'An attacker with S3 read access downloads unencrypted objects and
-      reads sensitive data in plaintext. No encryption key is needed, lowering the
-      barrier to data theft.
+    description: 'An attacker with S3 read access downloads unencrypted objects and reads sensitive data
+      in plaintext. No encryption key is needed, lowering the barrier to data theft.
 
       '
     mitre_tactic: Exfiltration (TA0010)
-    impact: 'Sensitive data exposure in plaintext, regulatory compliance violations
-      for encryption-at-rest requirements.
+    impact: 'Sensitive data exposure in plaintext, regulatory compliance violations for encryption-at-rest
+      requirements.
 
       '
     threat_source: ADVERSARIAL
   - technique: S3 Object Ransomware via Re-Encryption
-    description: 'An attacker creates a custom KMS key, re-encrypts objects with their
-      own key, and deletes the originals. The organization cannot decrypt without
-      paying ransom.
+    description: 'An attacker creates a custom KMS key, re-encrypts objects with their own key, and deletes
+      the originals. The organization cannot decrypt without paying ransom.
 
       '
     mitre_tactic: Impact (TA0040)
-    impact: 'Data held hostage, inability to access encrypted objects without attacker''s
-      key, business disruption.
+    impact: 'Data held hostage, inability to access encrypted objects without attacker''s key, business
+      disruption.
 
       '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 2
+    rationale: Keyword-based classification from check s3_bucket_encryption_enabled
+  threat_actors:
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Plaintext Data Exfiltration
+    - S3 Object Ransomware via Re-Encryption
+    mitre_tactics: *id001
+    impact: 'Sensitive data exposure in plaintext, regulatory compliance violations for encryption-at-rest
+      requirements.
+
+      '
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Plaintext Data Exfiltration
+    - S3 Object Ransomware via Re-Encryption
+    mitre_tactics: *id002
+    impact: 'Sensitive data exposure in plaintext, regulatory compliance violations for encryption-at-rest
+      requirements.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - Plaintext Data Exfiltration
+    - S3 Object Ransomware via Re-Encryption
+    mitre_tactics: *id003
+    impact: 'Sensitive data exposure in plaintext, regulatory compliance violations for encryption-at-rest
+      requirements.
+
+      '
 - check_id: s3_bucket_logging_enabled
   title: S3 Bucket Access Logging
   description: Ensure S3 bucket has access logging enabled
@@ -177,17 +290,41 @@
     - 2.9.3
   attack_scenarios:
   - technique: Undetected Data Access and Exfiltration
-    description: 'Without access logging, an attacker performs reconnaissance and
-      data exfiltration without leaving audit trails. Incident response teams cannot
-      determine what was accessed or stolen.
+    description: 'Without access logging, an attacker performs reconnaissance and data exfiltration without
+      leaving audit trails. Incident response teams cannot determine what was accessed or stolen.
 
       '
     mitre_tactic: Defense Evasion (TA0005)
-    impact: 'Inability to detect unauthorized access, delayed incident detection,
-      loss of forensic evidence.
+    impact: 'Inability to detect unauthorized access, delayed incident detection, loss of forensic evidence.
 
       '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 3
+    rationale: Keyword-based classification from check s3_bucket_logging_enabled
+  threat_actors:
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Undetected Data Access and Exfiltration
+    mitre_tactics: *id002
+    impact: 'Inability to detect unauthorized access, delayed incident detection, loss of forensic evidence.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Undetected Data Access and Exfiltration
+    mitre_tactics: *id001
+    impact: 'Inability to detect unauthorized access, delayed incident detection, loss of forensic evidence.
+
+      '
 - check_id: s3_bucket_acl_not_public
   title: S3 Bucket ACL Not Public
   description: Ensure S3 bucket ACL does not allow public access
@@ -217,17 +354,44 @@
     - 2.8.2
   attack_scenarios:
   - technique: Anonymous Public Bucket Access
-    description: 'A bucket with public ACL is discoverable and accessible by anyone
-      on the internet. Attackers scan for public buckets using enumeration tools and
-      download all objects anonymously.
+    description: 'A bucket with public ACL is discoverable and accessible by anyone on the internet. Attackers
+      scan for public buckets using enumeration tools and download all objects anonymously.
 
       '
     mitre_tactic: Initial Access (TA0001)
-    impact: 'Worldwide unauthorized access, IP theft, source code exposure, compromise
-      of credentials or API keys stored in bucket.
+    impact: 'Worldwide unauthorized access, IP theft, source code exposure, compromise of credentials
+      or API keys stored in bucket.
 
       '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 3
+    rationale: Keyword-based classification from check s3_bucket_acl_not_public
+  threat_actors:
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Anonymous Public Bucket Access
+    mitre_tactics: *id001
+    impact: 'Worldwide unauthorized access, IP theft, source code exposure, compromise of credentials
+      or API keys stored in bucket.
+
+      '
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Anonymous Public Bucket Access
+    mitre_tactics: *id002
+    impact: 'Worldwide unauthorized access, IP theft, source code exposure, compromise of credentials
+      or API keys stored in bucket.
+
+      '
 - check_id: s3_bucket_lifecycle_policy
   title: S3 Bucket Lifecycle Policy
   description: Ensure S3 bucket has a lifecycle policy configured
@@ -250,17 +414,51 @@
     - 3.4.1
   attack_scenarios:
   - technique: Historical Data Harvesting
-    description: 'Without lifecycle policies, sensitive data remains indefinitely.
-      An attacker who gains access retrieves historical objects, old configs, or archived
-      credentials from extended time windows.
+    description: 'Without lifecycle policies, sensitive data remains indefinitely. An attacker who gains
+      access retrieves historical objects, old configs, or archived credentials from extended time windows.
 
       '
     mitre_tactic: Exfiltration (TA0010)
-    impact: 'Extended exposure of sensitive historical data, larger window for discovery
-      and exfiltration.
+    impact: 'Extended exposure of sensitive historical data, larger window for discovery and exfiltration.
 
       '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 3
+    rationale: Keyword-based classification from check s3_bucket_lifecycle_policy
+  threat_actors:
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Historical Data Harvesting
+    mitre_tactics: *id002
+    impact: 'Extended exposure of sensitive historical data, larger window for discovery and exfiltration.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - Historical Data Harvesting
+    mitre_tactics: *id003
+    impact: 'Extended exposure of sensitive historical data, larger window for discovery and exfiltration.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Historical Data Harvesting
+    mitre_tactics: *id001
+    impact: 'Extended exposure of sensitive historical data, larger window for discovery and exfiltration.
+
+      '
 - check_id: s3_bucket_mfa_delete
   title: S3 Bucket MFA Delete Enabled
   description: Ensure S3 bucket has MFA delete enabled for versioned objects
@@ -293,16 +491,56 @@
     - 2.12.1
   attack_scenarios:
   - technique: Versioned Object Permanent Deletion
-    description: >
-      An attacker with S3 delete permissions permanently removes versioned
-      objects and delete markers from a bucket. Without MFA delete, no
-      additional authentication is required to destroy all object versions,
-      enabling complete and irreversible data loss.
-    mitre_tactic: "Impact (TA0040)"
-    impact: >
-      Permanent destruction of all object versions, inability to recover
-      deleted data, bypassing versioning protections.
+    description: 'An attacker with S3 delete permissions permanently removes versioned objects and delete
+      markers from a bucket. Without MFA delete, no additional authentication is required to destroy all
+      object versions, enabling complete and irreversible data loss.
+
+      '
+    mitre_tactic: Impact (TA0040)
+    impact: 'Permanent destruction of all object versions, inability to recover deleted data, bypassing
+      versioning protections.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 2
+    rationale: Keyword-based classification from check s3_bucket_mfa_delete
+  threat_actors:
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Versioned Object Permanent Deletion
+    mitre_tactics: *id002
+    impact: 'Permanent destruction of all object versions, inability to recover deleted data, bypassing
+      versioning protections.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - Versioned Object Permanent Deletion
+    mitre_tactics: *id003
+    impact: 'Permanent destruction of all object versions, inability to recover deleted data, bypassing
+      versioning protections.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Versioned Object Permanent Deletion
+    mitre_tactics: *id001
+    impact: 'Permanent destruction of all object versions, inability to recover deleted data, bypassing
+      versioning protections.
+
+      '
 - check_id: s3_bucket_ssl_requests_only
   title: S3 Bucket SSL Requests Only
   description: Ensure S3 bucket policy enforces SSL-only access
@@ -334,13 +572,53 @@
     - 2.7.1
   attack_scenarios:
   - technique: Unencrypted S3 Traffic Interception
-    description: >
-      Without SSL enforcement, S3 API requests and data transfers can occur
-      over unencrypted HTTP. An attacker on the network path intercepts
-      plaintext object uploads and downloads, capturing sensitive data
-      and AWS credentials in transit.
-    mitre_tactic: "Credential Access (TA0006)"
-    impact: >
-      Interception of data in transit, credential theft from unencrypted
-      API calls, exposure of object contents during transfer.
+    description: 'Without SSL enforcement, S3 API requests and data transfers can occur over unencrypted
+      HTTP. An attacker on the network path intercepts plaintext object uploads and downloads, capturing
+      sensitive data and AWS credentials in transit.
+
+      '
+    mitre_tactic: Credential Access (TA0006)
+    impact: 'Interception of data in transit, credential theft from unencrypted API calls, exposure of
+      object contents during transfer.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+    rationale: Keyword-based classification from check s3_bucket_ssl_requests_only
+  threat_actors:
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Unencrypted S3 Traffic Interception
+    mitre_tactics: *id002
+    impact: 'Interception of data in transit, credential theft from unencrypted API calls, exposure of
+      object contents during transfer.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - Unencrypted S3 Traffic Interception
+    mitre_tactics: *id003
+    impact: 'Interception of data in transit, credential theft from unencrypted API calls, exposure of
+      object contents during transfer.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Unencrypted S3 Traffic Interception
+    mitre_tactics: *id001
+    impact: 'Interception of data in transit, credential theft from unencrypted API calls, exposure of
+      object contents during transfer.
+
+      '

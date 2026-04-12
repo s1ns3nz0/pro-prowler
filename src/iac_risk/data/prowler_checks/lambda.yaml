@@ -29,16 +29,63 @@
     - 2.8.2
   attack_scenarios:
   - technique: Unauthenticated Lambda Function Invocation
-    description: >
-      An attacker discovers a Lambda function URL with no authentication and
-      invokes it directly with crafted payloads. This can trigger unintended
-      actions such as data exfiltration, privilege escalation through the
-      function's IAM role, or abuse of downstream services.
-    mitre_tactic: "Initial Access (TA0001)"
-    impact: >
-      Unauthorized code execution with the function's IAM role permissions,
-      potential access to databases, S3 buckets, and other AWS services.
+    description: 'An attacker discovers a Lambda function URL with no authentication and invokes it directly
+      with crafted payloads. This can trigger unintended actions such as data exfiltration, privilege
+      escalation through the function''s IAM role, or abuse of downstream services.
+
+      '
+    mitre_tactic: Initial Access (TA0001)
+    impact: 'Unauthorized code execution with the function''s IAM role permissions, potential access to
+      databases, S3 buckets, and other AWS services.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 5
+    integrity: 2
+    availability: 2
+    rationale: Keyword-based classification from check lambda_function_public_access
+  threat_actors:
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Unauthenticated Lambda Function Invocation
+    mitre_tactics: &id002
+    - TA0001
+    - TA0009
+    - TA0040
+    impact: 'Unauthorized code execution with the function''s IAM role permissions, potential access to
+      databases, S3 buckets, and other AWS services.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - Unauthenticated Lambda Function Invocation
+    mitre_tactics: &id003
+    - TA0006
+    - TA0004
+    impact: 'Unauthorized code execution with the function''s IAM role permissions, potential access to
+      databases, S3 buckets, and other AWS services.
+
+      '
+  - actor_name: Supply Chain Attacker
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Persistent backdoor, mass compromise
+    techniques:
+    - Unauthenticated Lambda Function Invocation
+    mitre_tactics: &id001
+    - TA0001
+    - TA0003
+    impact: 'Unauthorized code execution with the function''s IAM role permissions, potential access to
+      databases, S3 buckets, and other AWS services.
+
+      '
 - check_id: lambda_function_vpc_config
   title: Lambda Function VPC Configuration
   description: Ensure Lambda function is deployed within a VPC
@@ -66,15 +113,56 @@
     - 2.8.2
   attack_scenarios:
   - technique: Lambda Internet-Based Data Exfiltration
-    description: >
-      A Lambda function outside a VPC has unrestricted internet access. An
-      attacker who compromises the function code or dependencies can exfiltrate
-      data to external endpoints without network-level controls.
-    mitre_tactic: "Exfiltration (TA0010)"
-    impact: >
-      Uncontrolled outbound data exfiltration, inability to apply network
-      security controls, lack of VPC Flow Log visibility.
+    description: 'A Lambda function outside a VPC has unrestricted internet access. An attacker who compromises
+      the function code or dependencies can exfiltrate data to external endpoints without network-level
+      controls.
+
+      '
+    mitre_tactic: Exfiltration (TA0010)
+    impact: 'Uncontrolled outbound data exfiltration, inability to apply network security controls, lack
+      of VPC Flow Log visibility.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 3
+    rationale: Keyword-based classification from check lambda_function_vpc_config
+  threat_actors:
+  - actor_name: Supply Chain Attacker
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Persistent backdoor, mass compromise
+    techniques:
+    - Lambda Internet-Based Data Exfiltration
+    mitre_tactics: *id001
+    impact: 'Uncontrolled outbound data exfiltration, inability to apply network security controls, lack
+      of VPC Flow Log visibility.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Lambda Internet-Based Data Exfiltration
+    mitre_tactics: *id002
+    impact: 'Uncontrolled outbound data exfiltration, inability to apply network security controls, lack
+      of VPC Flow Log visibility.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - Lambda Internet-Based Data Exfiltration
+    mitre_tactics: *id003
+    impact: 'Uncontrolled outbound data exfiltration, inability to apply network security controls, lack
+      of VPC Flow Log visibility.
+
+      '
 - check_id: lambda_function_tracing
   title: Lambda Function X-Ray Tracing
   description: Ensure Lambda function has X-Ray active tracing enabled
@@ -102,16 +190,56 @@
     - 2.9.3
   attack_scenarios:
   - technique: Undetected Lambda Abuse
-    description: >
-      Without active tracing, an attacker who compromises a Lambda function
-      can perform malicious operations without leaving observable traces. The
-      lack of distributed tracing makes it difficult to correlate attacks
-      across service boundaries.
-    mitre_tactic: "Defense Evasion (TA0005)"
-    impact: >
-      Inability to trace malicious invocations, delayed incident detection,
-      loss of forensic evidence across distributed services.
+    description: 'Without active tracing, an attacker who compromises a Lambda function can perform malicious
+      operations without leaving observable traces. The lack of distributed tracing makes it difficult
+      to correlate attacks across service boundaries.
+
+      '
+    mitre_tactic: Defense Evasion (TA0005)
+    impact: 'Inability to trace malicious invocations, delayed incident detection, loss of forensic evidence
+      across distributed services.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 3
+    rationale: Keyword-based classification from check lambda_function_tracing
+  threat_actors:
+  - actor_name: Supply Chain Attacker
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Persistent backdoor, mass compromise
+    techniques:
+    - Undetected Lambda Abuse
+    mitre_tactics: *id001
+    impact: 'Inability to trace malicious invocations, delayed incident detection, loss of forensic evidence
+      across distributed services.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Undetected Lambda Abuse
+    mitre_tactics: *id002
+    impact: 'Inability to trace malicious invocations, delayed incident detection, loss of forensic evidence
+      across distributed services.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - Undetected Lambda Abuse
+    mitre_tactics: *id003
+    impact: 'Inability to trace malicious invocations, delayed incident detection, loss of forensic evidence
+      across distributed services.
+
+      '
 - check_id: lambda_function_dlq
   title: Lambda Function Dead Letter Queue
   description: Ensure Lambda function has a dead letter queue configured
@@ -139,19 +267,60 @@
     - 2.12.1
   attack_scenarios:
   - technique: Silent Data Loss via Failed Invocations
-    description: >
-      Without a dead letter queue, failed Lambda invocations silently discard
-      events. An attacker can cause intentional failures through malformed
-      payloads, causing critical events to be permanently lost without any
-      notification or retry mechanism.
-    mitre_tactic: "Impact (TA0040)"
-    impact: >
-      Permanent loss of failed event data, undetected processing failures,
-      potential data integrity issues in downstream systems.
+    description: 'Without a dead letter queue, failed Lambda invocations silently discard events. An attacker
+      can cause intentional failures through malformed payloads, causing critical events to be permanently
+      lost without any notification or retry mechanism.
+
+      '
+    mitre_tactic: Impact (TA0040)
+    impact: 'Permanent loss of failed event data, undetected processing failures, potential data integrity
+      issues in downstream systems.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 3
+    rationale: Keyword-based classification from check lambda_function_dlq
+  threat_actors:
+  - actor_name: Supply Chain Attacker
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Persistent backdoor, mass compromise
+    techniques:
+    - Silent Data Loss via Failed Invocations
+    mitre_tactics: *id001
+    impact: 'Permanent loss of failed event data, undetected processing failures, potential data integrity
+      issues in downstream systems.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Silent Data Loss via Failed Invocations
+    mitre_tactics: *id002
+    impact: 'Permanent loss of failed event data, undetected processing failures, potential data integrity
+      issues in downstream systems.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - Silent Data Loss via Failed Invocations
+    mitre_tactics: *id003
+    impact: 'Permanent loss of failed event data, undetected processing failures, potential data integrity
+      issues in downstream systems.
+
+      '
 - check_id: lambda_function_env_encryption
   title: Lambda Function Environment Variable Encryption
-  description: Ensure Lambda function environment variables are encrypted with a customer-managed KMS key
+  description: Ensure Lambda function environment variables are encrypted with a customer-managed KMS
+    key
   severity: HIGH
   resource_types:
   - aws_lambda_function
@@ -179,13 +348,55 @@
     - 2.7.1
   attack_scenarios:
   - technique: Lambda Environment Variable Secret Extraction
-    description: >
-      An attacker with Lambda read permissions extracts environment variables
-      containing database credentials, API keys, and secrets. Without
-      customer-managed KMS encryption, the default AWS-managed key provides
-      weaker access control boundaries.
-    mitre_tactic: "Credential Access (TA0006)"
-    impact: >
-      Exposure of secrets stored in environment variables, credential theft
-      enabling lateral movement to databases and external services.
+    description: 'An attacker with Lambda read permissions extracts environment variables containing database
+      credentials, API keys, and secrets. Without customer-managed KMS encryption, the default AWS-managed
+      key provides weaker access control boundaries.
+
+      '
+    mitre_tactic: Credential Access (TA0006)
+    impact: 'Exposure of secrets stored in environment variables, credential theft enabling lateral movement
+      to databases and external services.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 2
+    rationale: Keyword-based classification from check lambda_function_env_encryption
+  threat_actors:
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Lambda Environment Variable Secret Extraction
+    mitre_tactics:
+    - TA0009
+    - TA0040
+    impact: 'Exposure of secrets stored in environment variables, credential theft enabling lateral movement
+      to databases and external services.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - Lambda Environment Variable Secret Extraction
+    mitre_tactics: *id003
+    impact: 'Exposure of secrets stored in environment variables, credential theft enabling lateral movement
+      to databases and external services.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Lambda Environment Variable Secret Extraction
+    mitre_tactics: *id002
+    impact: 'Exposure of secrets stored in environment variables, credential theft enabling lateral movement
+      to databases and external services.
+
+      '

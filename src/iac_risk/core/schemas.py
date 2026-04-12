@@ -99,7 +99,10 @@ class DetectionLogic(BaseModel):
 
 
 class AttackScenario(BaseModel):
-    """A specific attack scenario derived from real-world threat intelligence."""
+    """A specific attack scenario derived from real-world threat intelligence.
+
+    DEPRECATED: Kept for backward compatibility. New checks should use ThreatActor.
+    """
 
     technique: str = Field(description="Attack technique name")
     description: str = Field(
@@ -113,6 +116,48 @@ class AttackScenario(BaseModel):
         default="", description="What the attacker gains",
     )
     threat_source: ThreatSource = ThreatSource.ADVERSARIAL
+
+
+class CIAImpact(BaseModel):
+    """CIA triad impact rating for a Prowler check."""
+
+    confidentiality: RiskLevel = RiskLevel.LOW
+    integrity: RiskLevel = RiskLevel.LOW
+    availability: RiskLevel = RiskLevel.LOW
+    rationale: str = Field(
+        default="",
+        description="Short explanation of why this check affects each CIA dimension",
+    )
+
+
+class ThreatActor(BaseModel):
+    """A structured threat actor profile with techniques and motivations."""
+
+    actor_name: str = Field(
+        description="Standard actor name: 'External Attacker', "
+        "'Malicious Insider', 'Compromised Credentials', "
+        "'Accidental User', 'Supply Chain Attacker'",
+    )
+    actor_type: ThreatSource = ThreatSource.ADVERSARIAL
+    capability: str = Field(
+        default="Medium",
+        description="Low / Medium / High / Nation-state",
+    )
+    motivation: str = Field(
+        default="",
+        description="Why this actor would exploit the weakness",
+    )
+    techniques: list[str] = Field(
+        default_factory=list,
+        description="Attack techniques this actor would use",
+    )
+    mitre_tactics: list[str] = Field(
+        default_factory=list,
+        description="MITRE ATT&CK tactic IDs, e.g. ['TA0001', 'TA0009']",
+    )
+    impact: str = Field(
+        default="", description="Business impact if this actor succeeds",
+    )
 
 
 class ProwlerCheckDef(BaseModel):
@@ -129,9 +174,17 @@ class ProwlerCheckDef(BaseModel):
         default_factory=dict,
         description="Mapping of ComplianceFramework value -> list of control IDs",
     )
+    cia_impact: CIAImpact = Field(
+        default_factory=CIAImpact,
+        description="CIA triad impact rating for this check",
+    )
+    threat_actors: list[ThreatActor] = Field(
+        default_factory=list,
+        description="Structured threat actor profiles for this check",
+    )
     attack_scenarios: list[AttackScenario] = Field(
         default_factory=list,
-        description="Real-world attack scenarios that exploit this misconfiguration",
+        description="DEPRECATED: Use threat_actors instead",
     )
 
 
@@ -152,9 +205,17 @@ class Finding(BaseModel):
         default_factory=list,
         description="Flattened list of compliance control IDs affected",
     )
+    cia_impact: CIAImpact = Field(
+        default_factory=CIAImpact,
+        description="CIA triad impact for this finding",
+    )
+    threat_actors: list[ThreatActor] = Field(
+        default_factory=list,
+        description="Structured threat actor profiles",
+    )
     attack_scenarios: list[AttackScenario] = Field(
         default_factory=list,
-        description="Attack scenarios from check definition",
+        description="DEPRECATED: Use threat_actors instead",
     )
 
 
@@ -209,13 +270,12 @@ class BusinessContext(BaseModel):
 
 
 class ImpactRating(BaseModel):
-    """Impact rating for a finding, incorporating business context."""
+    """Impact rating for a finding using CIA triad."""
 
     finding_id: str
-    mission_impact: RiskLevel = RiskLevel.MODERATE
-    asset_impact: RiskLevel = RiskLevel.MODERATE
-    individual_impact: RiskLevel = RiskLevel.LOW
-    organizational_impact: RiskLevel = RiskLevel.MODERATE
+    confidentiality_impact: RiskLevel = RiskLevel.LOW
+    integrity_impact: RiskLevel = RiskLevel.LOW
+    availability_impact: RiskLevel = RiskLevel.LOW
     overall_impact: RiskLevel = RiskLevel.MODERATE
     business_context_annotation: str | None = None
     final_risk_level: int = Field(
@@ -391,6 +451,10 @@ class AttackPath(BaseModel):
     finding_ids: list[str] = Field(default_factory=list)
     attack_narrative: str = Field(
         description="AI-generated chained attack description",
+    )
+    threat_actors: list[ThreatActor] = Field(
+        default_factory=list,
+        description="Structured threat actors targeting this resource",
     )
     risk_summary: str = Field(
         default="", description="One-line risk summary",

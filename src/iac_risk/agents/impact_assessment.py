@@ -1,4 +1,4 @@
-"""Impact Assessment Agent — applies business context to risk determinations."""
+"""Impact Assessment Agent — applies business context to findings using CIA triad."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from iac_risk.agents.base import BaseAgent, ValidationResult
 from iac_risk.core.enums import RiskLevel, Severity
 from iac_risk.core.schemas import (
     BusinessContext,
+    CIAImpact,
     Finding,
     ImpactAssessmentInput,
     ImpactAssessmentOutput,
@@ -19,8 +20,8 @@ from iac_risk.services.nist_risk_model import calculate_risk_level, map_risk_to_
 
 logger = logging.getLogger(__name__)
 
-# Default impact mapping when no business context is available
-_SEVERITY_TO_DEFAULT_IMPACT: dict[Severity, RiskLevel] = {
+# Default CIA mapping when finding has no check-level CIA
+_SEVERITY_TO_DEFAULT_CIA: dict[Severity, RiskLevel] = {
     Severity.CRITICAL: RiskLevel.HIGH,
     Severity.HIGH: RiskLevel.MODERATE,
     Severity.MODERATE: RiskLevel.LOW,
@@ -33,20 +34,13 @@ def _match_context(
     resource_address: str,
     contexts: list[BusinessContext],
 ) -> BusinessContext | None:
-    """Find the best matching business context for a resource address.
-
-    Handles module-prefixed addresses like 'module.db.aws_db_instance.this'
-    by also matching against each dotted segment of the address.
-    """
+    """Find the best matching business context for a resource address."""
     for ctx in contexts:
         pattern = ctx.resource_pattern
-        # Direct match
         if fnmatch.fnmatch(resource_address, pattern):
             return ctx
-        # Match against address with wildcard prefix (module paths)
         if fnmatch.fnmatch(resource_address, f"*{pattern}"):
             return ctx
-        # Match against each segment pair (type.name) in the address
         parts = resource_address.split(".")
         for i in range(len(parts) - 1):
             segment = f"{parts[i]}.{parts[i + 1]}"
@@ -55,43 +49,57 @@ def _match_context(
     return None
 
 
-def _determine_impact_from_context(ctx: BusinessContext) -> dict[str, RiskLevel]:
-    """Derive four impact dimensions from business context."""
-    criticality = ctx.asset_criticality
+def _elevate_level(base: RiskLevel, by: int) -> RiskLevel:
+    """Elevate a RiskLevel by N steps, capped at VERY_HIGH."""
+    levels = [
+        RiskLevel.VERY_LOW,
+        RiskLevel.LOW,
+        RiskLevel.MODERATE,
+        RiskLevel.HIGH,
+        RiskLevel.VERY_HIGH,
+    ]
+    try:
+        idx = levels.index(base)
+    except ValueError:
+        return base
+    new_idx = min(idx + by, len(levels) - 1)
+    return levels[new_idx]
 
-    # Mission impact = asset criticality
-    mission = criticality
 
-    # Asset impact based on data classification
-    data_map = {
-        "restricted": RiskLevel.VERY_HIGH,
-        "confidential": RiskLevel.HIGH,
-        "internal": RiskLevel.MODERATE,
-        "public": RiskLevel.LOW,
-    }
-    asset = data_map.get(ctx.data_classification, RiskLevel.MODERATE)
+def _apply_business_context(
+    cia: CIAImpact, ctx: BusinessContext,
+) -> tuple[RiskLevel, RiskLevel, RiskLevel]:
+    """Elevate CIA impact based on business context.
 
-    # Individual impact: higher if PII-related frameworks are in scope
-    pii_frameworks = {"ISO_27701"}
-    has_pii = any(f.value in pii_frameworks for f in ctx.compliance_scope)
-    individual = RiskLevel.HIGH if has_pii else RiskLevel.LOW
+    - Restricted/confidential data elevates Confidentiality
+    - High/very-high asset criticality elevates all 3 dimensions
+    - Multiple compliance frameworks elevate Integrity (audit requirements)
+    """
+    c = cia.confidentiality
+    i = cia.integrity
+    a = cia.availability
 
-    # Organizational impact based on number of compliance frameworks
+    # Data classification elevates confidentiality
+    if ctx.data_classification == "restricted":
+        c = _elevate_level(c, 2)
+    elif ctx.data_classification == "confidential":
+        c = _elevate_level(c, 1)
+
+    # Asset criticality elevates all dimensions
+    if ctx.asset_criticality == RiskLevel.VERY_HIGH:
+        c = _elevate_level(c, 2)
+        i = _elevate_level(i, 2)
+        a = _elevate_level(a, 2)
+    elif ctx.asset_criticality == RiskLevel.HIGH:
+        c = _elevate_level(c, 1)
+        i = _elevate_level(i, 1)
+        a = _elevate_level(a, 1)
+
+    # Multiple compliance frameworks elevate integrity
     if len(ctx.compliance_scope) >= 3:
-        organizational = RiskLevel.VERY_HIGH
-    elif len(ctx.compliance_scope) >= 2:
-        organizational = RiskLevel.HIGH
-    elif len(ctx.compliance_scope) >= 1:
-        organizational = RiskLevel.MODERATE
-    else:
-        organizational = RiskLevel.LOW
+        i = _elevate_level(i, 1)
 
-    return {
-        "mission": mission,
-        "asset": asset,
-        "individual": individual,
-        "organizational": organizational,
-    }
+    return c, i, a
 
 
 class ImpactAssessmentAgent(BaseAgent):
@@ -108,7 +116,6 @@ class ImpactAssessmentAgent(BaseAgent):
         risk_dets = input_data.risk_determinations
         contexts = input_data.business_contexts
 
-        # Build lookup
         finding_map: dict[str, Finding] = {f.finding_id: f for f in findings}
         ratings: list[ImpactRating] = []
 
@@ -117,10 +124,28 @@ class ImpactAssessmentAgent(BaseAgent):
             if not finding:
                 continue
 
+            # Start from check-level CIA impact
+            base_cia = finding.cia_impact
+
+            # Fallback: derive from severity if check has no CIA
+            if (
+                base_cia.confidentiality == RiskLevel.LOW
+                and base_cia.integrity == RiskLevel.LOW
+                and base_cia.availability == RiskLevel.LOW
+            ):
+                default = _SEVERITY_TO_DEFAULT_CIA.get(
+                    finding.severity, RiskLevel.MODERATE,
+                )
+                base_cia = CIAImpact(
+                    confidentiality=default,
+                    integrity=default,
+                    availability=default,
+                )
+
             ctx = _match_context(finding.resource_address, contexts)
 
             if ctx:
-                impacts = _determine_impact_from_context(ctx)
+                c, i, a = _apply_business_context(base_cia, ctx)
                 annotation = (
                     f"Asset criticality: {ctx.asset_criticality.name}, "
                     f"Data: {ctx.data_classification}, "
@@ -129,29 +154,21 @@ class ImpactAssessmentAgent(BaseAgent):
                 if ctx.notes:
                     annotation += f". {ctx.notes}"
             else:
-                # Default: derive impact from finding severity
-                default_impact = _SEVERITY_TO_DEFAULT_IMPACT.get(
-                    finding.severity, RiskLevel.MODERATE
-                )
-                impacts = {
-                    "mission": default_impact,
-                    "asset": default_impact,
-                    "individual": RiskLevel.LOW,
-                    "organizational": default_impact,
-                }
+                c = base_cia.confidentiality
+                i = base_cia.integrity
+                a = base_cia.availability
                 annotation = None
 
-            overall = max(impacts.values())
+            overall = max(c, i, a)
             final_risk = calculate_risk_level(det.likelihood, overall)
             final_severity = map_risk_to_severity(final_risk)
 
             ratings.append(
                 ImpactRating(
                     finding_id=det.finding_id,
-                    mission_impact=impacts["mission"],
-                    asset_impact=impacts["asset"],
-                    individual_impact=impacts["individual"],
-                    organizational_impact=impacts["organizational"],
+                    confidentiality_impact=c,
+                    integrity_impact=i,
+                    availability_impact=a,
                     overall_impact=overall,
                     business_context_annotation=annotation,
                     final_risk_level=final_risk,

@@ -182,6 +182,8 @@ def evaluate_check(
             compliance_controls=_flatten_compliance_controls(
                 check.compliance_mappings,
             ),
+            cia_impact=check.cia_impact,
+            threat_actors=check.threat_actors,
             attack_scenarios=check.attack_scenarios,
         )
 
@@ -221,6 +223,8 @@ def _make_finding(
         compliance_controls=_flatten_compliance_controls(
             check.compliance_mappings,
         ),
+        cia_impact=check.cia_impact,
+        threat_actors=check.threat_actors,
         attack_scenarios=check.attack_scenarios,
     )
 

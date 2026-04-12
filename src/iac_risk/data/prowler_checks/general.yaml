@@ -30,17 +30,50 @@
     - 2.9.3
   attack_scenarios:
   - technique: Undetected Privilege Escalation and Persistence
-    description: 'Without CloudTrail, an attacker performs privilege escalation, creates
-      backdoor IAM users, assumes roles, and installs persistence mechanisms with
-      zero audit trail. Incident response teams have no evidence of the compromise.
+    description: 'Without CloudTrail, an attacker performs privilege escalation, creates backdoor IAM
+      users, assumes roles, and installs persistence mechanisms with zero audit trail. Incident response
+      teams have no evidence of the compromise.
 
       '
     mitre_tactic: Defense Evasion (TA0005)
-    impact: 'Complete lack of audit logging, inability to detect attacks, compromised
-      incident response capabilities.
+    impact: 'Complete lack of audit logging, inability to detect attacks, compromised incident response
+      capabilities.
 
       '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 3
+    rationale: Keyword-based classification from check cloudtrail_enabled
+  threat_actors:
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Undetected Privilege Escalation and Persistence
+    mitre_tactics: &id001
+    - TA0009
+    - TA0040
+    impact: 'Complete lack of audit logging, inability to detect attacks, compromised incident response
+      capabilities.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Undetected Privilege Escalation and Persistence
+    mitre_tactics: &id002
+    - TA0001
+    - TA0009
+    - TA0040
+    impact: 'Complete lack of audit logging, inability to detect attacks, compromised incident response
+      capabilities.
+
+      '
 - check_id: vpc_flow_logs_enabled
   title: VPC Flow Logs Enabled
   description: Ensure VPC has flow logs enabled
@@ -67,17 +100,42 @@
     - 2.9.1
   attack_scenarios:
   - technique: Undetected Lateral Movement and C2
-    description: 'Without VPC Flow Logs, network-based attacks go undetected. An attacker
-      performs port scanning, connects to unauthorized systems, and establishes C2
-      channels without network visibility or correlation capabilities.
+    description: 'Without VPC Flow Logs, network-based attacks go undetected. An attacker performs port
+      scanning, connects to unauthorized systems, and establishes C2 channels without network visibility
+      or correlation capabilities.
 
       '
     mitre_tactic: Defense Evasion (TA0005)
-    impact: 'Invisible network attacks, undetected lateral movement, inability to
-      trace exfiltration paths.
+    impact: 'Invisible network attacks, undetected lateral movement, inability to trace exfiltration paths.
 
       '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 3
+    rationale: Keyword-based classification from check vpc_flow_logs_enabled
+  threat_actors:
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Undetected Lateral Movement and C2
+    mitre_tactics: *id001
+    impact: 'Invisible network attacks, undetected lateral movement, inability to trace exfiltration paths.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Undetected Lateral Movement and C2
+    mitre_tactics: *id002
+    impact: 'Invisible network attacks, undetected lateral movement, inability to trace exfiltration paths.
+
+      '
 - check_id: ebs_default_encryption
   title: EBS Default Encryption Enabled
   description: Ensure EBS default encryption is enabled in the account
@@ -100,17 +158,58 @@
     - 2.5.1
   attack_scenarios:
   - technique: Cross-Account EBS Snapshot Theft
-    description: 'Without default encryption, new volumes are unencrypted. An attacker
-      creates snapshots, shares them across accounts, or attaches volumes to forensics
-      instances to extract data directly from the filesystem.
+    description: 'Without default encryption, new volumes are unencrypted. An attacker creates snapshots,
+      shares them across accounts, or attaches volumes to forensics instances to extract data directly
+      from the filesystem.
 
       '
     mitre_tactic: Exfiltration (TA0010)
-    impact: 'Unencrypted storage exposure, snapshot-based data theft across accounts,
-      complete filesystem extraction.
+    impact: 'Unencrypted storage exposure, snapshot-based data theft across accounts, complete filesystem
+      extraction.
 
       '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 2
+    rationale: Keyword-based classification from check ebs_default_encryption
+  threat_actors:
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Cross-Account EBS Snapshot Theft
+    mitre_tactics: *id002
+    impact: 'Unencrypted storage exposure, snapshot-based data theft across accounts, complete filesystem
+      extraction.
+
+      '
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Cross-Account EBS Snapshot Theft
+    mitre_tactics: *id001
+    impact: 'Unencrypted storage exposure, snapshot-based data theft across accounts, complete filesystem
+      extraction.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - Cross-Account EBS Snapshot Theft
+    mitre_tactics: &id003
+    - TA0006
+    - TA0004
+    impact: 'Unencrypted storage exposure, snapshot-based data theft across accounts, complete filesystem
+      extraction.
+
+      '
 - check_id: config_recorder_enabled
   title: AWS Config Recorder Enabled
   description: Ensure AWS Config recorder is enabled for configuration tracking
@@ -135,17 +234,42 @@
     - 2.11.1
   attack_scenarios:
   - technique: Undetected Backdoor Installation
-    description: 'Without Config recording, an attacker modifies security groups,
-      disables encryption, changes IAM policies, and creates backdoor resources without
-      triggering configuration change alerts. Drift goes undetected.
+    description: 'Without Config recording, an attacker modifies security groups, disables encryption,
+      changes IAM policies, and creates backdoor resources without triggering configuration change alerts.
+      Drift goes undetected.
 
       '
     mitre_tactic: Persistence (TA0003)
-    impact: 'Undetected infrastructure changes, no configuration audit trail, undetected
-      persistence mechanisms.
+    impact: 'Undetected infrastructure changes, no configuration audit trail, undetected persistence mechanisms.
 
       '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 3
+    rationale: Keyword-based classification from check config_recorder_enabled
+  threat_actors:
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Undetected Backdoor Installation
+    mitre_tactics: *id002
+    impact: 'Undetected infrastructure changes, no configuration audit trail, undetected persistence mechanisms.
+
+      '
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Undetected Backdoor Installation
+    mitre_tactics: *id001
+    impact: 'Undetected infrastructure changes, no configuration audit trail, undetected persistence mechanisms.
+
+      '
 - check_id: kms_key_rotation
   title: KMS Key Rotation Enabled
   description: Ensure KMS keys have automatic rotation enabled
@@ -170,14 +294,51 @@
     - 2.5.2
   attack_scenarios:
   - technique: Long-Term Cryptographic Key Compromise
-    description: 'KMS keys without rotation remain in use indefinitely. If a key is
-      compromised through insider threat or supply chain attack, all data encrypted
-      with that key — past and future — remains vulnerable to bulk decryption.
-
-      '
+    description: "KMS keys without rotation remain in use indefinitely. If a key is compromised through\
+      \ insider threat or supply chain attack, all data encrypted with that key \u2014 past and future\
+      \ \u2014 remains vulnerable to bulk decryption.\n"
     mitre_tactic: Exfiltration (TA0010)
-    impact: 'Long-term cryptographic exposure, bulk decryption of historical data
-      with a single compromised key.
+    impact: 'Long-term cryptographic exposure, bulk decryption of historical data with a single compromised
+      key.
 
       '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 2
+    rationale: Keyword-based classification from check kms_key_rotation
+  threat_actors:
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Long-Term Cryptographic Key Compromise
+    mitre_tactics: *id001
+    impact: 'Long-term cryptographic exposure, bulk decryption of historical data with a single compromised
+      key.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - Long-Term Cryptographic Key Compromise
+    mitre_tactics: *id003
+    impact: 'Long-term cryptographic exposure, bulk decryption of historical data with a single compromised
+      key.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Long-Term Cryptographic Key Compromise
+    mitre_tactics: *id002
+    impact: 'Long-term cryptographic exposure, bulk decryption of historical data with a single compromised
+      key.
+
+      '

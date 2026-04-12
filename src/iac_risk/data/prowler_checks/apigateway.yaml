@@ -29,16 +29,50 @@
     - 2.6.7
   attack_scenarios:
   - technique: Unauthenticated API Access
-    description: >
-      An attacker discovers API Gateway endpoints without authorization and
-      invokes them directly. Without an authorizer, any internet user can
-      access backend resources, execute business logic, and extract data
-      through the API.
-    mitre_tactic: "Initial Access (TA0001)"
-    impact: >
-      Unauthorized access to backend services, data exfiltration through
-      unprotected API endpoints, abuse of business logic.
+    description: 'An attacker discovers API Gateway endpoints without authorization and invokes them directly.
+      Without an authorizer, any internet user can access backend resources, execute business logic, and
+      extract data through the API.
+
+      '
+    mitre_tactic: Initial Access (TA0001)
+    impact: 'Unauthorized access to backend services, data exfiltration through unprotected API endpoints,
+      abuse of business logic.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 3
+    rationale: Keyword-based classification from check apigateway_authorizer
+  threat_actors:
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Unauthenticated API Access
+    mitre_tactics: &id001
+    - TA0001
+    - TA0009
+    - TA0040
+    impact: 'Unauthorized access to backend services, data exfiltration through unprotected API endpoints,
+      abuse of business logic.
+
+      '
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Unauthenticated API Access
+    mitre_tactics: &id002
+    - TA0009
+    - TA0040
+    impact: 'Unauthorized access to backend services, data exfiltration through unprotected API endpoints,
+      abuse of business logic.
+
+      '
 - check_id: apigateway_waf
   title: API Gateway WAF Integration
   description: Ensure API Gateway stage has a WAF web ACL associated
@@ -70,16 +104,47 @@
     - 2.10.1
   attack_scenarios:
   - technique: API Injection Attacks Without WAF
-    description: >
-      Without WAF protection, an attacker sends SQL injection, NoSQL
-      injection, and command injection payloads directly to API Gateway
-      endpoints. No request inspection or filtering occurs before the
-      payload reaches the backend Lambda or integration.
-    mitre_tactic: "Initial Access (TA0001)"
-    impact: >
-      Successful exploitation of injection vulnerabilities, backend
-      data breach, unauthorized command execution.
+    description: 'Without WAF protection, an attacker sends SQL injection, NoSQL injection, and command
+      injection payloads directly to API Gateway endpoints. No request inspection or filtering occurs
+      before the payload reaches the backend Lambda or integration.
+
+      '
+    mitre_tactic: Initial Access (TA0001)
+    impact: 'Successful exploitation of injection vulnerabilities, backend data breach, unauthorized command
+      execution.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 4
+    rationale: Keyword-based classification from check apigateway_waf
+  threat_actors:
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - API Injection Attacks Without WAF
+    mitre_tactics: *id001
+    impact: 'Successful exploitation of injection vulnerabilities, backend data breach, unauthorized command
+      execution.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - API Injection Attacks Without WAF
+    mitre_tactics: &id003
+    - TA0006
+    - TA0004
+    impact: 'Successful exploitation of injection vulnerabilities, backend data breach, unauthorized command
+      execution.
+
+      '
 - check_id: apigateway_logging
   title: API Gateway Execution Logging
   description: Ensure API Gateway stage has execution logging enabled
@@ -108,16 +173,45 @@
     - 2.9.3
   attack_scenarios:
   - technique: Undetected API Abuse and Enumeration
-    description: >
-      Without execution logging, an attacker performs API enumeration,
-      credential stuffing, and data scraping without generating audit
-      trails. Security teams cannot detect abnormal API usage patterns
-      or reconstruct attack timelines.
-    mitre_tactic: "Defense Evasion (TA0005)"
-    impact: >
-      Inability to detect API abuse, no forensic evidence of attacks,
-      delayed incident response for API-related breaches.
+    description: 'Without execution logging, an attacker performs API enumeration, credential stuffing,
+      and data scraping without generating audit trails. Security teams cannot detect abnormal API usage
+      patterns or reconstruct attack timelines.
+
+      '
+    mitre_tactic: Defense Evasion (TA0005)
+    impact: 'Inability to detect API abuse, no forensic evidence of attacks, delayed incident response
+      for API-related breaches.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 3
+    rationale: Keyword-based classification from check apigateway_logging
+  threat_actors:
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Undetected API Abuse and Enumeration
+    mitre_tactics: *id002
+    impact: 'Inability to detect API abuse, no forensic evidence of attacks, delayed incident response
+      for API-related breaches.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Undetected API Abuse and Enumeration
+    mitre_tactics: *id001
+    impact: 'Inability to detect API abuse, no forensic evidence of attacks, delayed incident response
+      for API-related breaches.
+
+      '
 - check_id: apigateway_ssl_certificate
   title: API Gateway Custom Domain TLS Certificate
   description: Ensure API Gateway custom domain has a TLS certificate configured
@@ -146,16 +240,45 @@
     - 2.7.1
   attack_scenarios:
   - technique: API Traffic Interception
-    description: >
-      Without proper TLS on the custom domain, API traffic between clients
-      and the gateway is vulnerable to interception. An attacker captures
-      API keys, authentication tokens, and request/response bodies containing
-      sensitive data.
-    mitre_tactic: "Credential Access (TA0006)"
-    impact: >
-      API key theft, authentication token exposure, interception of
-      sensitive request and response data in transit.
+    description: 'Without proper TLS on the custom domain, API traffic between clients and the gateway
+      is vulnerable to interception. An attacker captures API keys, authentication tokens, and request/response
+      bodies containing sensitive data.
+
+      '
+    mitre_tactic: Credential Access (TA0006)
+    impact: 'API key theft, authentication token exposure, interception of sensitive request and response
+      data in transit.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+    rationale: Keyword-based classification from check apigateway_ssl_certificate
+  threat_actors:
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - API Traffic Interception
+    mitre_tactics: *id001
+    impact: 'API key theft, authentication token exposure, interception of sensitive request and response
+      data in transit.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - API Traffic Interception
+    mitre_tactics: *id003
+    impact: 'API key theft, authentication token exposure, interception of sensitive request and response
+      data in transit.
+
+      '
 - check_id: apigateway_throttling
   title: API Gateway Throttling Configured
   description: Ensure API Gateway stage has throttling configured
@@ -184,13 +307,42 @@
     - 2.12.1
   attack_scenarios:
   - technique: API DDoS and Resource Exhaustion
-    description: >
-      Without throttling, an attacker sends a massive volume of API requests
-      to exhaust backend resources. This causes Lambda concurrency limits to
-      be reached, database connections to be saturated, and legitimate users
-      to experience service denial.
-    mitre_tactic: "Impact (TA0040)"
-    impact: >
-      Backend resource exhaustion, service unavailability for legitimate
-      users, inflated AWS costs from excessive invocations.
+    description: 'Without throttling, an attacker sends a massive volume of API requests to exhaust backend
+      resources. This causes Lambda concurrency limits to be reached, database connections to be saturated,
+      and legitimate users to experience service denial.
+
+      '
+    mitre_tactic: Impact (TA0040)
+    impact: 'Backend resource exhaustion, service unavailability for legitimate users, inflated AWS costs
+      from excessive invocations.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 2
+    integrity: 2
+    availability: 4
+    rationale: Keyword-based classification from check apigateway_throttling
+  threat_actors:
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - API DDoS and Resource Exhaustion
+    mitre_tactics: *id001
+    impact: 'Backend resource exhaustion, service unavailability for legitimate users, inflated AWS costs
+      from excessive invocations.
+
+      '
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - API DDoS and Resource Exhaustion
+    mitre_tactics: *id002
+    impact: 'Backend resource exhaustion, service unavailability for legitimate users, inflated AWS costs
+      from excessive invocations.
+
+      '

@@ -29,17 +29,63 @@
     - 2.6.2
   attack_scenarios:
   - technique: Wildcard Permission Exploitation
-    description: 'An attacker gaining control of a principal with Action:* has unlimited
-      AWS API access. They enumerate all services, create backdoor IAM users, modify
-      security policies, and exfiltrate data from any service.
+    description: 'An attacker gaining control of a principal with Action:* has unlimited AWS API access.
+      They enumerate all services, create backdoor IAM users, modify security policies, and exfiltrate
+      data from any service.
 
       '
     mitre_tactic: Privilege Escalation (TA0004)
-    impact: 'Unrestricted AWS API access, ability to compromise entire AWS environment,
-      admin-equivalent permissions.
+    impact: 'Unrestricted AWS API access, ability to compromise entire AWS environment, admin-equivalent
+      permissions.
 
       '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+    rationale: Keyword-based classification from check iam_policy_wildcard_actions
+  threat_actors:
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Wildcard Permission Exploitation
+    mitre_tactics: &id001
+    - TA0009
+    - TA0040
+    impact: 'Unrestricted AWS API access, ability to compromise entire AWS environment, admin-equivalent
+      permissions.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - Wildcard Permission Exploitation
+    mitre_tactics: &id002
+    - TA0006
+    - TA0004
+    impact: 'Unrestricted AWS API access, ability to compromise entire AWS environment, admin-equivalent
+      permissions.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Wildcard Permission Exploitation
+    mitre_tactics: &id003
+    - TA0001
+    - TA0009
+    - TA0040
+    impact: 'Unrestricted AWS API access, ability to compromise entire AWS environment, admin-equivalent
+      permissions.
+
+      '
 - check_id: iam_policy_wildcard_resource
   title: IAM Policy Wildcard Resource
   description: Ensure IAM policies do not grant access to all resources (*)
@@ -63,17 +109,56 @@
     - 2.6.2
   attack_scenarios:
   - technique: Cross-Resource Privilege Escalation
-    description: 'A policy with Resource:* allows the principal to modify any AWS
-      resource. An attacker targets sensitive IAM roles, modifies trust policies to
-      allow self-assumption, and attaches admin policies to themselves.
+    description: 'A policy with Resource:* allows the principal to modify any AWS resource. An attacker
+      targets sensitive IAM roles, modifies trust policies to allow self-assumption, and attaches admin
+      policies to themselves.
 
       '
     mitre_tactic: Privilege Escalation (TA0004)
-    impact: 'Ability to modify any AWS resource, privilege escalation through role
-      assumption hijacking, org-wide lateral movement.
+    impact: 'Ability to modify any AWS resource, privilege escalation through role assumption hijacking,
+      org-wide lateral movement.
 
       '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+    rationale: Keyword-based classification from check iam_policy_wildcard_resource
+  threat_actors:
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Cross-Resource Privilege Escalation
+    mitre_tactics: *id001
+    impact: 'Ability to modify any AWS resource, privilege escalation through role assumption hijacking,
+      org-wide lateral movement.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - Cross-Resource Privilege Escalation
+    mitre_tactics: *id002
+    impact: 'Ability to modify any AWS resource, privilege escalation through role assumption hijacking,
+      org-wide lateral movement.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Cross-Resource Privilege Escalation
+    mitre_tactics: *id003
+    impact: 'Ability to modify any AWS resource, privilege escalation through role assumption hijacking,
+      org-wide lateral movement.
+
+      '
 - check_id: iam_role_trust_policy_restricted
   title: IAM Role Trust Policy Restricted
   description: Ensure IAM role trust policy does not allow assumption by all AWS principals
@@ -101,17 +186,56 @@
     - 2.6.7
   attack_scenarios:
   - technique: Cross-Account Role Assumption
-    description: 'A role with Principal:* can be assumed by any AWS principal in any
-      account. An attacker from an external account assumes this role and gains its
-      permissions, enabling cross-account privilege escalation.
+    description: 'A role with Principal:* can be assumed by any AWS principal in any account. An attacker
+      from an external account assumes this role and gains its permissions, enabling cross-account privilege
+      escalation.
 
       '
     mitre_tactic: Privilege Escalation (TA0004)
-    impact: 'Cross-account access, unauthorized role assumption, ability to access
-      sensitive role permissions from external accounts.
+    impact: 'Cross-account access, unauthorized role assumption, ability to access sensitive role permissions
+      from external accounts.
 
       '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 3
+    rationale: Keyword-based classification from check iam_role_trust_policy_restricted
+  threat_actors:
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Cross-Account Role Assumption
+    mitre_tactics: *id001
+    impact: 'Cross-account access, unauthorized role assumption, ability to access sensitive role permissions
+      from external accounts.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - Cross-Account Role Assumption
+    mitre_tactics: *id002
+    impact: 'Cross-account access, unauthorized role assumption, ability to access sensitive role permissions
+      from external accounts.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Cross-Account Role Assumption
+    mitre_tactics: *id003
+    impact: 'Cross-account access, unauthorized role assumption, ability to access sensitive role permissions
+      from external accounts.
+
+      '
 - check_id: iam_no_inline_policy_on_user
   title: No Inline Policies on IAM Users
   description: Ensure IAM users do not have inline policies attached
@@ -121,8 +245,7 @@
   detection_logic:
     field_path: policy
     operator: not_exists
-  remediation: Use managed policies attached to groups or roles instead of inline
-    user policies
+  remediation: Use managed policies attached to groups or roles instead of inline user policies
   compliance_mappings:
     PCI_DSS:
     - 7.1.1
@@ -134,21 +257,59 @@
     - 2.6.2
   attack_scenarios:
   - technique: Inline Policy Injection for Privilege Escalation
-    description: 'An attacker with iam:PutUserPolicy permission injects an inline
-      policy granting admin permissions, bypassing permission boundaries. Inline policies
-      are harder to audit than managed policies, enabling stealthy privilege escalation.
+    description: 'An attacker with iam:PutUserPolicy permission injects an inline policy granting admin
+      permissions, bypassing permission boundaries. Inline policies are harder to audit than managed policies,
+      enabling stealthy privilege escalation.
 
       '
     mitre_tactic: Privilege Escalation (TA0004)
-    impact: 'Direct privilege escalation without boundary constraints, hidden policy
-      modifications difficult to detect in audits.
+    impact: 'Direct privilege escalation without boundary constraints, hidden policy modifications difficult
+      to detect in audits.
 
       '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 3
+    rationale: Keyword-based classification from check iam_no_inline_policy_on_user
+  threat_actors:
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Inline Policy Injection for Privilege Escalation
+    mitre_tactics: *id001
+    impact: 'Direct privilege escalation without boundary constraints, hidden policy modifications difficult
+      to detect in audits.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - Inline Policy Injection for Privilege Escalation
+    mitre_tactics: *id002
+    impact: 'Direct privilege escalation without boundary constraints, hidden policy modifications difficult
+      to detect in audits.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Inline Policy Injection for Privilege Escalation
+    mitre_tactics: *id003
+    impact: 'Direct privilege escalation without boundary constraints, hidden policy modifications difficult
+      to detect in audits.
+
+      '
 - check_id: iam_policy_no_full_admin
   title: IAM Policy No Full Admin Access
-  description: Ensure no IAM policy grants full administrator access (Action:* on
-    Resource:*)
+  description: Ensure no IAM policy grants full administrator access (Action:* on Resource:*)
   severity: CRITICAL
   resource_types:
   - aws_iam_policy
@@ -179,29 +340,69 @@
     - 2.6.7
   attack_scenarios:
   - technique: Full AWS Environment Compromise
-    description: 'An attacker controlling a principal with Action:* and Resource:*
-      can perform any action on any resource — creating admin accounts, disabling
-      CloudTrail, exfiltrating all data, and destroying infrastructure.
-
-      '
+    description: "An attacker controlling a principal with Action:* and Resource:* can perform any action\
+      \ on any resource \u2014 creating admin accounts, disabling CloudTrail, exfiltrating all data, and\
+      \ destroying infrastructure.\n"
     mitre_tactic: Privilege Escalation (TA0004)
-    impact: 'Complete AWS environment compromise, unlimited privilege escalation,
-      ability to disable all security controls.
+    impact: 'Complete AWS environment compromise, unlimited privilege escalation, ability to disable all
+      security controls.
 
       '
     threat_source: ADVERSARIAL
   - technique: Backdoor Account Creation and Persistence
-    description: 'With full admin, the attacker creates new IAM users with console
-      access, generates long-lived access keys, and sets up cross-account roles for
-      persistent re-entry even after the initial compromise is remediated.
+    description: 'With full admin, the attacker creates new IAM users with console access, generates long-lived
+      access keys, and sets up cross-account roles for persistent re-entry even after the initial compromise
+      is remediated.
 
       '
     mitre_tactic: Persistence (TA0003)
-    impact: 'Persistent access surviving credential rotation, multiple re-entry paths,
-      difficult to fully eradicate.
+    impact: 'Persistent access surviving credential rotation, multiple re-entry paths, difficult to fully
+      eradicate.
 
       '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+    rationale: Keyword-based classification from check iam_policy_no_full_admin
+  threat_actors:
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Full AWS Environment Compromise
+    - Backdoor Account Creation and Persistence
+    mitre_tactics: *id001
+    impact: 'Complete AWS environment compromise, unlimited privilege escalation, ability to disable all
+      security controls.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - Full AWS Environment Compromise
+    - Backdoor Account Creation and Persistence
+    mitre_tactics: *id002
+    impact: 'Complete AWS environment compromise, unlimited privilege escalation, ability to disable all
+      security controls.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Full AWS Environment Compromise
+    - Backdoor Account Creation and Persistence
+    mitre_tactics: *id003
+    impact: 'Complete AWS environment compromise, unlimited privilege escalation, ability to disable all
+      security controls.
+
+      '
 - check_id: iam_password_policy_length
   title: IAM Password Policy Minimum Length
   description: Ensure IAM password policy requires minimum length of 14 characters
@@ -228,16 +429,56 @@
     - 2.6.4
   attack_scenarios:
   - technique: Password Brute Force and Dictionary Attack
-    description: >
-      A weak minimum password length allows users to set short passwords
-      that are vulnerable to brute force and dictionary attacks. An attacker
-      uses automated tools to crack short passwords in minutes, gaining
-      console access to IAM users.
-    mitre_tactic: "Credential Access (TA0006)"
-    impact: >
-      Successful password cracking, unauthorized console access,
-      ability to perform actions with the compromised user's permissions.
+    description: 'A weak minimum password length allows users to set short passwords that are vulnerable
+      to brute force and dictionary attacks. An attacker uses automated tools to crack short passwords
+      in minutes, gaining console access to IAM users.
+
+      '
+    mitre_tactic: Credential Access (TA0006)
+    impact: 'Successful password cracking, unauthorized console access, ability to perform actions with
+      the compromised user''s permissions.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+    rationale: Keyword-based classification from check iam_password_policy_length
+  threat_actors:
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Password Brute Force and Dictionary Attack
+    mitre_tactics: *id001
+    impact: 'Successful password cracking, unauthorized console access, ability to perform actions with
+      the compromised user''s permissions.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - Password Brute Force and Dictionary Attack
+    mitre_tactics: *id002
+    impact: 'Successful password cracking, unauthorized console access, ability to perform actions with
+      the compromised user''s permissions.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Password Brute Force and Dictionary Attack
+    mitre_tactics: *id003
+    impact: 'Successful password cracking, unauthorized console access, ability to perform actions with
+      the compromised user''s permissions.
+
+      '
 - check_id: iam_root_mfa_enabled
   title: IAM Root Account MFA Enabled
   description: Ensure the root account has multi-factor authentication enabled
@@ -267,16 +508,56 @@
     - 2.6.4
   attack_scenarios:
   - technique: Root Account Credential Compromise
-    description: >
-      An attacker obtains the root account password through phishing or
-      credential leakage. Without MFA, they gain unrestricted access to
-      the entire AWS account with no additional authentication barrier,
-      enabling complete environment takeover.
-    mitre_tactic: "Initial Access (TA0001)"
-    impact: >
-      Complete AWS account takeover, unrestricted access to all services
-      and data, ability to modify billing and close the account.
+    description: 'An attacker obtains the root account password through phishing or credential leakage.
+      Without MFA, they gain unrestricted access to the entire AWS account with no additional authentication
+      barrier, enabling complete environment takeover.
+
+      '
+    mitre_tactic: Initial Access (TA0001)
+    impact: 'Complete AWS account takeover, unrestricted access to all services and data, ability to modify
+      billing and close the account.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 2
+    rationale: Keyword-based classification from check iam_root_mfa_enabled
+  threat_actors:
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Root Account Credential Compromise
+    mitre_tactics: *id001
+    impact: 'Complete AWS account takeover, unrestricted access to all services and data, ability to modify
+      billing and close the account.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - Root Account Credential Compromise
+    mitre_tactics: *id002
+    impact: 'Complete AWS account takeover, unrestricted access to all services and data, ability to modify
+      billing and close the account.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Root Account Credential Compromise
+    mitre_tactics: *id003
+    impact: 'Complete AWS account takeover, unrestricted access to all services and data, ability to modify
+      billing and close the account.
+
+      '
 - check_id: iam_access_key_rotation
   title: IAM Access Key Rotation
   description: Ensure IAM access keys are rotated within 90 days
@@ -307,13 +588,53 @@
     - 2.5.2
   attack_scenarios:
   - technique: Stale Access Key Exploitation
-    description: >
-      Long-lived access keys that are never rotated provide an extended
-      window for exploitation. An attacker who obtains a leaked key from
-      code repositories, logs, or insider access can use it indefinitely
-      without detection if it is never rotated.
-    mitre_tactic: "Credential Access (TA0006)"
-    impact: >
-      Long-term unauthorized API access, extended exploitation window,
-      difficulty detecting compromised credentials.
+    description: 'Long-lived access keys that are never rotated provide an extended window for exploitation.
+      An attacker who obtains a leaked key from code repositories, logs, or insider access can use it
+      indefinitely without detection if it is never rotated.
+
+      '
+    mitre_tactic: Credential Access (TA0006)
+    impact: 'Long-term unauthorized API access, extended exploitation window, difficulty detecting compromised
+      credentials.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 3
+    rationale: Keyword-based classification from check iam_access_key_rotation
+  threat_actors:
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Stale Access Key Exploitation
+    mitre_tactics: *id001
+    impact: 'Long-term unauthorized API access, extended exploitation window, difficulty detecting compromised
+      credentials.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - Stale Access Key Exploitation
+    mitre_tactics: *id002
+    impact: 'Long-term unauthorized API access, extended exploitation window, difficulty detecting compromised
+      credentials.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Stale Access Key Exploitation
+    mitre_tactics: *id003
+    impact: 'Long-term unauthorized API access, extended exploitation window, difficulty detecting compromised
+      credentials.
+
+      '

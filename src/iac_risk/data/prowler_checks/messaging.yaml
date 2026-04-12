@@ -27,16 +27,63 @@
     - 2.7.1
   attack_scenarios:
   - technique: SNS Message Interception
-    description: >
-      An attacker with access to SNS topic data reads unencrypted messages
-      containing sensitive notifications, alerts, and application events.
-      Without KMS encryption, messages at rest in SNS are not protected
-      by customer-controlled encryption keys.
-    mitre_tactic: "Exfiltration (TA0010)"
-    impact: >
-      Exposure of sensitive notification data, interception of application
-      events and alerts, potential credential leakage in messages.
+    description: 'An attacker with access to SNS topic data reads unencrypted messages containing sensitive
+      notifications, alerts, and application events. Without KMS encryption, messages at rest in SNS are
+      not protected by customer-controlled encryption keys.
+
+      '
+    mitre_tactic: Exfiltration (TA0010)
+    impact: 'Exposure of sensitive notification data, interception of application events and alerts, potential
+      credential leakage in messages.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 2
+    rationale: Keyword-based classification from check sns_topic_encryption
+  threat_actors:
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - SNS Message Interception
+    mitre_tactics: &id001
+    - TA0009
+    - TA0040
+    impact: 'Exposure of sensitive notification data, interception of application events and alerts, potential
+      credential leakage in messages.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - SNS Message Interception
+    mitre_tactics: &id002
+    - TA0006
+    - TA0004
+    impact: 'Exposure of sensitive notification data, interception of application events and alerts, potential
+      credential leakage in messages.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - SNS Message Interception
+    mitre_tactics: &id003
+    - TA0001
+    - TA0009
+    - TA0040
+    impact: 'Exposure of sensitive notification data, interception of application events and alerts, potential
+      credential leakage in messages.
+
+      '
 - check_id: sqs_queue_encryption
   title: SQS Queue Encryption with KMS
   description: Ensure SQS queue is encrypted with a KMS key
@@ -66,16 +113,56 @@
     - 2.7.1
   attack_scenarios:
   - technique: SQS Message Data Extraction
-    description: >
-      An attacker with SQS read permissions receives and reads unencrypted
-      queue messages containing sensitive payloads. Without KMS encryption,
-      the messages are stored and transmitted without customer-controlled
-      encryption boundaries.
-    mitre_tactic: "Exfiltration (TA0010)"
-    impact: >
-      Exposure of queued message data, interception of sensitive
-      application payloads, potential credential leakage.
+    description: 'An attacker with SQS read permissions receives and reads unencrypted queue messages
+      containing sensitive payloads. Without KMS encryption, the messages are stored and transmitted without
+      customer-controlled encryption boundaries.
+
+      '
+    mitre_tactic: Exfiltration (TA0010)
+    impact: 'Exposure of queued message data, interception of sensitive application payloads, potential
+      credential leakage.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 2
+    rationale: Keyword-based classification from check sqs_queue_encryption
+  threat_actors:
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - SQS Message Data Extraction
+    mitre_tactics: *id001
+    impact: 'Exposure of queued message data, interception of sensitive application payloads, potential
+      credential leakage.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - SQS Message Data Extraction
+    mitre_tactics: *id002
+    impact: 'Exposure of queued message data, interception of sensitive application payloads, potential
+      credential leakage.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - SQS Message Data Extraction
+    mitre_tactics: *id003
+    impact: 'Exposure of queued message data, interception of sensitive application payloads, potential
+      credential leakage.
+
+      '
 - check_id: sqs_queue_policy_public
   title: SQS Queue Not Publicly Accessible
   description: Ensure SQS queue policy does not allow public access
@@ -107,16 +194,56 @@
     - 2.8.2
   attack_scenarios:
   - technique: Public SQS Queue Message Injection
-    description: >
-      An attacker discovers a publicly accessible SQS queue and injects
-      malicious messages that are processed by downstream consumers. This
-      can trigger unintended actions, exploit deserialization vulnerabilities,
-      or poison application data pipelines.
-    mitre_tactic: "Initial Access (TA0001)"
-    impact: >
-      Injection of malicious messages into processing pipelines,
-      exploitation of message consumers, data integrity compromise.
+    description: 'An attacker discovers a publicly accessible SQS queue and injects malicious messages
+      that are processed by downstream consumers. This can trigger unintended actions, exploit deserialization
+      vulnerabilities, or poison application data pipelines.
+
+      '
+    mitre_tactic: Initial Access (TA0001)
+    impact: 'Injection of malicious messages into processing pipelines, exploitation of message consumers,
+      data integrity compromise.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 3
+    rationale: Keyword-based classification from check sqs_queue_policy_public
+  threat_actors:
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Public SQS Queue Message Injection
+    mitre_tactics: *id001
+    impact: 'Injection of malicious messages into processing pipelines, exploitation of message consumers,
+      data integrity compromise.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - Public SQS Queue Message Injection
+    mitre_tactics: *id002
+    impact: 'Injection of malicious messages into processing pipelines, exploitation of message consumers,
+      data integrity compromise.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Public SQS Queue Message Injection
+    mitre_tactics: *id003
+    impact: 'Injection of malicious messages into processing pipelines, exploitation of message consumers,
+      data integrity compromise.
+
+      '
 - check_id: sns_topic_policy_public
   title: SNS Topic Not Publicly Accessible
   description: Ensure SNS topic policy does not allow public access
@@ -148,13 +275,53 @@
     - 2.8.2
   attack_scenarios:
   - technique: Public SNS Topic Subscription and Data Leak
-    description: >
-      An attacker subscribes to a publicly accessible SNS topic and receives
-      all published messages. This exposes sensitive notifications, system
-      alerts, and application events to unauthorized third parties without
-      the organization's knowledge.
-    mitre_tactic: "Exfiltration (TA0010)"
-    impact: >
-      Unauthorized receipt of all topic messages, exposure of sensitive
-      notifications and alerts, data leakage to attacker-controlled endpoints.
+    description: 'An attacker subscribes to a publicly accessible SNS topic and receives all published
+      messages. This exposes sensitive notifications, system alerts, and application events to unauthorized
+      third parties without the organization''s knowledge.
+
+      '
+    mitre_tactic: Exfiltration (TA0010)
+    impact: 'Unauthorized receipt of all topic messages, exposure of sensitive notifications and alerts,
+      data leakage to attacker-controlled endpoints.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 3
+    rationale: Keyword-based classification from check sns_topic_policy_public
+  threat_actors:
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Public SNS Topic Subscription and Data Leak
+    mitre_tactics: *id001
+    impact: 'Unauthorized receipt of all topic messages, exposure of sensitive notifications and alerts,
+      data leakage to attacker-controlled endpoints.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - Public SNS Topic Subscription and Data Leak
+    mitre_tactics: *id002
+    impact: 'Unauthorized receipt of all topic messages, exposure of sensitive notifications and alerts,
+      data leakage to attacker-controlled endpoints.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Public SNS Topic Subscription and Data Leak
+    mitre_tactics: *id003
+    impact: 'Unauthorized receipt of all topic messages, exposure of sensitive notifications and alerts,
+      data leakage to attacker-controlled endpoints.
+
+      '

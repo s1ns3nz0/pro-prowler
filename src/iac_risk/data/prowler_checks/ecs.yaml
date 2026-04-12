@@ -28,16 +28,63 @@
     - 2.6.7
   attack_scenarios:
   - technique: Container Escape via Root Privileges
-    description: >
-      An attacker exploits a vulnerability in the containerized application
-      and, running as root, escapes the container namespace to access the
-      host. Root privileges enable mounting host filesystems and accessing
-      the EC2 instance metadata service.
-    mitre_tactic: "Privilege Escalation (TA0004)"
-    impact: >
-      Container escape, host-level access, ability to steal IAM credentials
-      from the instance metadata service, lateral movement to other containers.
+    description: 'An attacker exploits a vulnerability in the containerized application and, running as
+      root, escapes the container namespace to access the host. Root privileges enable mounting host filesystems
+      and accessing the EC2 instance metadata service.
+
+      '
+    mitre_tactic: Privilege Escalation (TA0004)
+    impact: 'Container escape, host-level access, ability to steal IAM credentials from the instance metadata
+      service, lateral movement to other containers.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 3
+    rationale: Keyword-based classification from check ecs_task_definition_no_root
+  threat_actors:
+  - actor_name: Supply Chain Attacker
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Persistent backdoor, mass compromise
+    techniques:
+    - Container Escape via Root Privileges
+    mitre_tactics: &id002
+    - TA0001
+    - TA0003
+    impact: 'Container escape, host-level access, ability to steal IAM credentials from the instance metadata
+      service, lateral movement to other containers.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Container Escape via Root Privileges
+    mitre_tactics: &id001
+    - TA0001
+    - TA0009
+    - TA0040
+    impact: 'Container escape, host-level access, ability to steal IAM credentials from the instance metadata
+      service, lateral movement to other containers.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - Container Escape via Root Privileges
+    mitre_tactics: &id004
+    - TA0006
+    - TA0004
+    impact: 'Container escape, host-level access, ability to steal IAM credentials from the instance metadata
+      service, lateral movement to other containers.
+
+      '
 - check_id: ecs_task_definition_logging
   title: ECS Task Definition Logging Configured
   description: Ensure ECS task definition has container logging configured
@@ -66,16 +113,58 @@
     - 2.9.3
   attack_scenarios:
   - technique: Undetected Container Compromise
-    description: >
-      Without container logging, an attacker compromises a container and
-      performs malicious operations without generating centralized audit
-      trails. Incident response teams have no visibility into container
-      activity or the scope of compromise.
-    mitre_tactic: "Defense Evasion (TA0005)"
-    impact: >
-      No visibility into container activity, inability to detect compromise,
-      delayed incident response, loss of forensic evidence.
+    description: 'Without container logging, an attacker compromises a container and performs malicious
+      operations without generating centralized audit trails. Incident response teams have no visibility
+      into container activity or the scope of compromise.
+
+      '
+    mitre_tactic: Defense Evasion (TA0005)
+    impact: 'No visibility into container activity, inability to detect compromise, delayed incident response,
+      loss of forensic evidence.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 3
+    rationale: Keyword-based classification from check ecs_task_definition_logging
+  threat_actors:
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Undetected Container Compromise
+    mitre_tactics: &id003
+    - TA0009
+    - TA0040
+    impact: 'No visibility into container activity, inability to detect compromise, delayed incident response,
+      loss of forensic evidence.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Undetected Container Compromise
+    mitre_tactics: *id001
+    impact: 'No visibility into container activity, inability to detect compromise, delayed incident response,
+      loss of forensic evidence.
+
+      '
+  - actor_name: Supply Chain Attacker
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Persistent backdoor, mass compromise
+    techniques:
+    - Undetected Container Compromise
+    mitre_tactics: *id002
+    impact: 'No visibility into container activity, inability to detect compromise, delayed incident response,
+      loss of forensic evidence.
+
+      '
 - check_id: ecs_cluster_container_insights
   title: ECS Cluster Container Insights Enabled
   description: Ensure ECS cluster has Container Insights enabled for monitoring
@@ -105,16 +194,56 @@
     - 2.11.1
   attack_scenarios:
   - technique: Cryptojacking Without Performance Monitoring
-    description: >
-      An attacker deploys cryptocurrency mining containers on the ECS cluster.
-      Without Container Insights, abnormal CPU and memory usage patterns go
-      undetected, allowing the attacker to consume compute resources
-      indefinitely.
-    mitre_tactic: "Impact (TA0040)"
-    impact: >
-      Undetected resource abuse, inflated AWS costs, degraded performance
-      for legitimate workloads, potential service disruption.
+    description: 'An attacker deploys cryptocurrency mining containers on the ECS cluster. Without Container
+      Insights, abnormal CPU and memory usage patterns go undetected, allowing the attacker to consume
+      compute resources indefinitely.
+
+      '
+    mitre_tactic: Impact (TA0040)
+    impact: 'Undetected resource abuse, inflated AWS costs, degraded performance for legitimate workloads,
+      potential service disruption.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 4
+    rationale: Keyword-based classification from check ecs_cluster_container_insights
+  threat_actors:
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Cryptojacking Without Performance Monitoring
+    mitre_tactics: *id003
+    impact: 'Undetected resource abuse, inflated AWS costs, degraded performance for legitimate workloads,
+      potential service disruption.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Cryptojacking Without Performance Monitoring
+    mitre_tactics: *id001
+    impact: 'Undetected resource abuse, inflated AWS costs, degraded performance for legitimate workloads,
+      potential service disruption.
+
+      '
+  - actor_name: Supply Chain Attacker
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Persistent backdoor, mass compromise
+    techniques:
+    - Cryptojacking Without Performance Monitoring
+    mitre_tactics: *id002
+    impact: 'Undetected resource abuse, inflated AWS costs, degraded performance for legitimate workloads,
+      potential service disruption.
+
+      '
 - check_id: ecs_service_assign_public_ip
   title: ECS Service No Public IP Assignment
   description: Ensure ECS Fargate tasks do not have public IPs assigned
@@ -145,16 +274,45 @@
     - 2.8.2
   attack_scenarios:
   - technique: Direct Container Service Exploitation
-    description: >
-      An ECS task with a public IP is directly reachable from the internet.
-      An attacker scans the IP, discovers exposed container ports, and
-      exploits application vulnerabilities without traversing any network
-      security controls like a load balancer or WAF.
-    mitre_tactic: "Initial Access (TA0001)"
-    impact: >
-      Direct exploitation of containerized services, bypassing edge
-      security controls, unauthorized access to application and data.
+    description: 'An ECS task with a public IP is directly reachable from the internet. An attacker scans
+      the IP, discovers exposed container ports, and exploits application vulnerabilities without traversing
+      any network security controls like a load balancer or WAF.
+
+      '
+    mitre_tactic: Initial Access (TA0001)
+    impact: 'Direct exploitation of containerized services, bypassing edge security controls, unauthorized
+      access to application and data.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 4
+    integrity: 2
+    availability: 3
+    rationale: Keyword-based classification from check ecs_service_assign_public_ip
+  threat_actors:
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Direct Container Service Exploitation
+    mitre_tactics: *id001
+    impact: 'Direct exploitation of containerized services, bypassing edge security controls, unauthorized
+      access to application and data.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - Direct Container Service Exploitation
+    mitre_tactics: *id004
+    impact: 'Direct exploitation of containerized services, bypassing edge security controls, unauthorized
+      access to application and data.
+
+      '
 - check_id: eks_cluster_encryption
   title: EKS Cluster Secrets Encryption
   description: Ensure EKS cluster has envelope encryption enabled for Kubernetes secrets
@@ -185,13 +343,53 @@
     - 2.7.1
   attack_scenarios:
   - technique: Kubernetes Secret Extraction from etcd
-    description: >
-      An attacker with access to the EKS control plane or etcd backups
-      extracts Kubernetes secrets stored in plaintext. Without envelope
-      encryption, database credentials, API keys, and TLS certificates
-      are readable directly from etcd storage.
-    mitre_tactic: "Credential Access (TA0006)"
-    impact: >
-      Exposure of all Kubernetes secrets including database passwords,
-      service account tokens, and TLS private keys.
+    description: 'An attacker with access to the EKS control plane or etcd backups extracts Kubernetes
+      secrets stored in plaintext. Without envelope encryption, database credentials, API keys, and TLS
+      certificates are readable directly from etcd storage.
+
+      '
+    mitre_tactic: Credential Access (TA0006)
+    impact: 'Exposure of all Kubernetes secrets including database passwords, service account tokens,
+      and TLS private keys.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 2
+    rationale: Keyword-based classification from check eks_cluster_encryption
+  threat_actors:
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Kubernetes Secret Extraction from etcd
+    mitre_tactics: *id003
+    impact: 'Exposure of all Kubernetes secrets including database passwords, service account tokens,
+      and TLS private keys.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - Kubernetes Secret Extraction from etcd
+    mitre_tactics: *id004
+    impact: 'Exposure of all Kubernetes secrets including database passwords, service account tokens,
+      and TLS private keys.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Kubernetes Secret Extraction from etcd
+    mitre_tactics: *id001
+    impact: 'Exposure of all Kubernetes secrets including database passwords, service account tokens,
+      and TLS private keys.
+
+      '

@@ -29,29 +29,62 @@
     - 2.7.2
   attack_scenarios:
   - technique: Direct Database Brute Force
-    description: 'An attacker discovers a publicly accessible RDS endpoint via network
-      scanning, attempts default credentials or brute-force attacks, and gains full
-      database access to extract all data.
+    description: 'An attacker discovers a publicly accessible RDS endpoint via network scanning, attempts
+      default credentials or brute-force attacks, and gains full database access to extract all data.
 
       '
     mitre_tactic: Initial Access (TA0001)
-    impact: 'Direct unauthorized database access, full data exfiltration, ability
-      to modify or delete critical business data.
+    impact: 'Direct unauthorized database access, full data exfiltration, ability to modify or delete
+      critical business data.
 
       '
     threat_source: ADVERSARIAL
   - technique: Database Credential Enumeration
-    description: 'An attacker connects to the public RDS endpoint and enumerates database
-      users, schemas, and tables. Even without full access, metadata leakage reveals
-      the organization''s data architecture.
+    description: 'An attacker connects to the public RDS endpoint and enumerates database users, schemas,
+      and tables. Even without full access, metadata leakage reveals the organization''s data architecture.
 
       '
     mitre_tactic: Discovery (TA0007)
-    impact: 'Database schema exposure, user enumeration, information useful for planning
-      further targeted attacks.
+    impact: 'Database schema exposure, user enumeration, information useful for planning further targeted
+      attacks.
 
       '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 5
+    integrity: 2
+    availability: 2
+    rationale: Keyword-based classification from check rds_public_accessibility
+  threat_actors:
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Direct Database Brute Force
+    - Database Credential Enumeration
+    mitre_tactics: &id001
+    - TA0001
+    - TA0009
+    - TA0040
+    impact: 'Direct unauthorized database access, full data exfiltration, ability to modify or delete
+      critical business data.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - Direct Database Brute Force
+    - Database Credential Enumeration
+    mitre_tactics: &id002
+    - TA0006
+    - TA0004
+    impact: 'Direct unauthorized database access, full data exfiltration, ability to modify or delete
+      critical business data.
+
+      '
 - check_id: rds_encryption_at_rest
   title: RDS Encryption at Rest
   description: Ensure RDS instances have encryption at rest enabled
@@ -82,17 +115,53 @@
     - 2.7.1
   attack_scenarios:
   - technique: RDS Snapshot Exfiltration
-    description: 'An attacker creates a snapshot of an unencrypted RDS instance, shares
-      it to an account they control, and restores it to access all database contents
-      without needing database credentials.
+    description: 'An attacker creates a snapshot of an unencrypted RDS instance, shares it to an account
+      they control, and restores it to access all database contents without needing database credentials.
 
       '
     mitre_tactic: Exfiltration (TA0010)
-    impact: 'Full database exposure via snapshots, complete data exfiltration without
-      authentication.
+    impact: 'Full database exposure via snapshots, complete data exfiltration without authentication.
 
       '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 2
+    rationale: Keyword-based classification from check rds_encryption_at_rest
+  threat_actors:
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - RDS Snapshot Exfiltration
+    mitre_tactics: *id001
+    impact: 'Full database exposure via snapshots, complete data exfiltration without authentication.
+
+      '
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - RDS Snapshot Exfiltration
+    mitre_tactics: &id003
+    - TA0009
+    - TA0040
+    impact: 'Full database exposure via snapshots, complete data exfiltration without authentication.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - RDS Snapshot Exfiltration
+    mitre_tactics: *id002
+    impact: 'Full database exposure via snapshots, complete data exfiltration without authentication.
+
+      '
 - check_id: rds_multi_az
   title: RDS Multi-AZ Deployment
   description: Ensure RDS instances use Multi-AZ deployment for high availability
@@ -117,17 +186,52 @@
     - 2.12.1
   attack_scenarios:
   - technique: Single-AZ Denial of Service
-    description: 'An attacker causes instance failure through resource exhaustion
-      or targeted disruption. Without Multi-AZ, the database has no automatic failover,
-      causing extended downtime and business disruption.
+    description: 'An attacker causes instance failure through resource exhaustion or targeted disruption.
+      Without Multi-AZ, the database has no automatic failover, causing extended downtime and business
+      disruption.
 
       '
     mitre_tactic: Impact (TA0040)
-    impact: 'Database unavailability, extended downtime, potential data loss, SLA
-      violations.
+    impact: 'Database unavailability, extended downtime, potential data loss, SLA violations.
 
       '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 5
+    rationale: Keyword-based classification from check rds_multi_az
+  threat_actors:
+  - actor_name: Accidental User
+    actor_type: ACCIDENTAL
+    capability: Low
+    motivation: Human error, misconfiguration
+    techniques:
+    - Single-AZ Denial of Service
+    mitre_tactics: &id004 []
+    impact: 'Database unavailability, extended downtime, potential data loss, SLA violations.
+
+      '
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Single-AZ Denial of Service
+    mitre_tactics: *id003
+    impact: 'Database unavailability, extended downtime, potential data loss, SLA violations.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Single-AZ Denial of Service
+    mitre_tactics: *id001
+    impact: 'Database unavailability, extended downtime, potential data loss, SLA violations.
+
+      '
 - check_id: rds_backup_retention
   title: RDS Automated Backups Enabled
   description: Ensure RDS instances have automated backup retention configured
@@ -155,17 +259,51 @@
     - 2.9.3
   attack_scenarios:
   - technique: Database Ransomware with No Recovery
-    description: 'An attacker gains database access, encrypts or deletes all data,
-      and demands ransom. Without backup retention, the organization has no recovery
-      points and faces permanent data loss.
+    description: 'An attacker gains database access, encrypts or deletes all data, and demands ransom.
+      Without backup retention, the organization has no recovery points and faces permanent data loss.
 
       '
     mitre_tactic: Impact (TA0040)
-    impact: 'Inability to recover from ransomware, permanent data loss, extended business
-      downtime.
+    impact: 'Inability to recover from ransomware, permanent data loss, extended business downtime.
 
       '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 5
+    rationale: Keyword-based classification from check rds_backup_retention
+  threat_actors:
+  - actor_name: Accidental User
+    actor_type: ACCIDENTAL
+    capability: Low
+    motivation: Human error, misconfiguration
+    techniques:
+    - Database Ransomware with No Recovery
+    mitre_tactics: *id004
+    impact: 'Inability to recover from ransomware, permanent data loss, extended business downtime.
+
+      '
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Database Ransomware with No Recovery
+    mitre_tactics: *id003
+    impact: 'Inability to recover from ransomware, permanent data loss, extended business downtime.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Database Ransomware with No Recovery
+    mitre_tactics: *id001
+    impact: 'Inability to recover from ransomware, permanent data loss, extended business downtime.
+
+      '
 - check_id: rds_deletion_protection
   title: RDS Deletion Protection Enabled
   description: Ensure RDS instance has deletion protection enabled
@@ -194,16 +332,56 @@
     - 2.12.1
   attack_scenarios:
   - technique: RDS Instance Destruction
-    description: >
-      An attacker with IAM permissions deletes the RDS instance with a
-      single API call. Without deletion protection, the database and all
-      its data are immediately destroyed, causing severe business disruption
-      and potential permanent data loss.
-    mitre_tactic: "Impact (TA0040)"
-    impact: >
-      Database destruction, permanent data loss if no backups exist,
-      extended recovery time, business continuity failure.
+    description: 'An attacker with IAM permissions deletes the RDS instance with a single API call. Without
+      deletion protection, the database and all its data are immediately destroyed, causing severe business
+      disruption and potential permanent data loss.
+
+      '
+    mitre_tactic: Impact (TA0040)
+    impact: 'Database destruction, permanent data loss if no backups exist, extended recovery time, business
+      continuity failure.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 5
+    rationale: Keyword-based classification from check rds_deletion_protection
+  threat_actors:
+  - actor_name: Accidental User
+    actor_type: ACCIDENTAL
+    capability: Low
+    motivation: Human error, misconfiguration
+    techniques:
+    - RDS Instance Destruction
+    mitre_tactics: *id004
+    impact: 'Database destruction, permanent data loss if no backups exist, extended recovery time, business
+      continuity failure.
+
+      '
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - RDS Instance Destruction
+    mitre_tactics: *id003
+    impact: 'Database destruction, permanent data loss if no backups exist, extended recovery time, business
+      continuity failure.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - RDS Instance Destruction
+    mitre_tactics: *id001
+    impact: 'Database destruction, permanent data loss if no backups exist, extended recovery time, business
+      continuity failure.
+
+      '
 - check_id: rds_iam_authentication
   title: RDS IAM Database Authentication
   description: Ensure RDS instance has IAM database authentication enabled
@@ -234,18 +412,56 @@
     - 2.6.4
   attack_scenarios:
   - technique: Database Credential Theft and Reuse
-    description: >
-      Without IAM authentication, database access relies on static
-      username/password credentials. An attacker who obtains these
-      credentials from application configs, environment variables, or
-      code repositories has persistent database access that is difficult
-      to revoke without credential rotation.
-    mitre_tactic: "Credential Access (TA0006)"
-    impact: >
-      Static credential compromise enabling persistent database access,
-      difficulty revoking access without rotating credentials across
-      all consuming applications.
+    description: 'Without IAM authentication, database access relies on static username/password credentials.
+      An attacker who obtains these credentials from application configs, environment variables, or code
+      repositories has persistent database access that is difficult to revoke without credential rotation.
+
+      '
+    mitre_tactic: Credential Access (TA0006)
+    impact: 'Static credential compromise enabling persistent database access, difficulty revoking access
+      without rotating credentials across all consuming applications.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 3
+    rationale: Keyword-based classification from check rds_iam_authentication
+  threat_actors:
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Database Credential Theft and Reuse
+    mitre_tactics: *id003
+    impact: 'Static credential compromise enabling persistent database access, difficulty revoking access
+      without rotating credentials across all consuming applications.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - Database Credential Theft and Reuse
+    mitre_tactics: *id002
+    impact: 'Static credential compromise enabling persistent database access, difficulty revoking access
+      without rotating credentials across all consuming applications.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Database Credential Theft and Reuse
+    mitre_tactics: *id001
+    impact: 'Static credential compromise enabling persistent database access, difficulty revoking access
+      without rotating credentials across all consuming applications.
+
+      '
 - check_id: rds_enhanced_monitoring
   title: RDS Enhanced Monitoring
   description: Ensure RDS instance has enhanced monitoring enabled
@@ -274,13 +490,42 @@
     - 2.11.1
   attack_scenarios:
   - technique: Undetected Database Resource Abuse
-    description: >
-      Without enhanced monitoring, an attacker who gains database access
-      can perform resource-intensive operations such as full table scans,
-      data exports, or cryptomining queries. Basic CloudWatch metrics lack
-      the granularity to detect these abnormal OS-level patterns.
-    mitre_tactic: "Defense Evasion (TA0005)"
-    impact: >
-      Undetected database abuse, missed anomalous query patterns,
-      inability to correlate OS-level metrics with suspicious activity.
+    description: 'Without enhanced monitoring, an attacker who gains database access can perform resource-intensive
+      operations such as full table scans, data exports, or cryptomining queries. Basic CloudWatch metrics
+      lack the granularity to detect these abnormal OS-level patterns.
+
+      '
+    mitre_tactic: Defense Evasion (TA0005)
+    impact: 'Undetected database abuse, missed anomalous query patterns, inability to correlate OS-level
+      metrics with suspicious activity.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 4
+    rationale: Keyword-based classification from check rds_enhanced_monitoring
+  threat_actors:
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - Undetected Database Resource Abuse
+    mitre_tactics: *id003
+    impact: 'Undetected database abuse, missed anomalous query patterns, inability to correlate OS-level
+      metrics with suspicious activity.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - Undetected Database Resource Abuse
+    mitre_tactics: *id001
+    impact: 'Undetected database abuse, missed anomalous query patterns, inability to correlate OS-level
+      metrics with suspicious activity.
+
+      '

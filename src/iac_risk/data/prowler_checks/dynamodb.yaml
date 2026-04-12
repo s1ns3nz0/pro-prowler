@@ -28,16 +28,63 @@
     - 2.7.1
   attack_scenarios:
   - technique: DynamoDB Table Data Exfiltration
-    description: >
-      An attacker with DynamoDB read permissions scans or queries the table
-      to extract all items. Without customer-managed KMS encryption, the
-      organization has weaker access control boundaries and cannot revoke
-      encryption key access independently of IAM permissions.
-    mitre_tactic: "Exfiltration (TA0010)"
-    impact: >
-      Data exposure without encryption key governance, inability to
-      independently revoke data access through key policy controls.
+    description: 'An attacker with DynamoDB read permissions scans or queries the table to extract all
+      items. Without customer-managed KMS encryption, the organization has weaker access control boundaries
+      and cannot revoke encryption key access independently of IAM permissions.
+
+      '
+    mitre_tactic: Exfiltration (TA0010)
+    impact: 'Data exposure without encryption key governance, inability to independently revoke data access
+      through key policy controls.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 2
+    rationale: Keyword-based classification from check dynamodb_table_encryption
+  threat_actors:
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - DynamoDB Table Data Exfiltration
+    mitre_tactics: &id002
+    - TA0009
+    - TA0040
+    impact: 'Data exposure without encryption key governance, inability to independently revoke data access
+      through key policy controls.
+
+      '
+  - actor_name: Compromised Credentials
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Account takeover, privilege escalation
+    techniques:
+    - DynamoDB Table Data Exfiltration
+    mitre_tactics:
+    - TA0006
+    - TA0004
+    impact: 'Data exposure without encryption key governance, inability to independently revoke data access
+      through key policy controls.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - DynamoDB Table Data Exfiltration
+    mitre_tactics: &id001
+    - TA0001
+    - TA0009
+    - TA0040
+    impact: 'Data exposure without encryption key governance, inability to independently revoke data access
+      through key policy controls.
+
+      '
 - check_id: dynamodb_table_pitr
   title: DynamoDB Point-in-Time Recovery
   description: Ensure DynamoDB table has point-in-time recovery enabled
@@ -67,15 +114,45 @@
     - 2.12.1
   attack_scenarios:
   - technique: DynamoDB Data Destruction Without Recovery
-    description: >
-      An attacker with write access deletes or corrupts items in a DynamoDB
-      table. Without point-in-time recovery, the organization cannot restore
-      the table to a state before the attack, resulting in permanent data loss.
-    mitre_tactic: "Impact (TA0040)"
-    impact: >
-      Inability to recover from data deletion or corruption, permanent
-      data loss, extended business disruption.
+    description: 'An attacker with write access deletes or corrupts items in a DynamoDB table. Without
+      point-in-time recovery, the organization cannot restore the table to a state before the attack,
+      resulting in permanent data loss.
+
+      '
+    mitre_tactic: Impact (TA0040)
+    impact: 'Inability to recover from data deletion or corruption, permanent data loss, extended business
+      disruption.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 3
+    rationale: Keyword-based classification from check dynamodb_table_pitr
+  threat_actors:
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - DynamoDB Data Destruction Without Recovery
+    mitre_tactics: *id001
+    impact: 'Inability to recover from data deletion or corruption, permanent data loss, extended business
+      disruption.
+
+      '
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - DynamoDB Data Destruction Without Recovery
+    mitre_tactics: *id002
+    impact: 'Inability to recover from data deletion or corruption, permanent data loss, extended business
+      disruption.
+
+      '
 - check_id: dynamodb_table_autoscaling
   title: DynamoDB Table Auto-Scaling
   description: Ensure DynamoDB table has auto-scaling configured for capacity management
@@ -104,16 +181,45 @@
     - 2.12.1
   attack_scenarios:
   - technique: DynamoDB Capacity Exhaustion DoS
-    description: >
-      An attacker sends a high volume of requests to a DynamoDB table with
-      fixed provisioned capacity. Without auto-scaling, the table throttles
-      legitimate requests, causing application errors and denial of service
-      for end users.
-    mitre_tactic: "Impact (TA0040)"
-    impact: >
-      Service degradation through throttling, application errors for
-      legitimate users, potential revenue loss during outage.
+    description: 'An attacker sends a high volume of requests to a DynamoDB table with fixed provisioned
+      capacity. Without auto-scaling, the table throttles legitimate requests, causing application errors
+      and denial of service for end users.
+
+      '
+    mitre_tactic: Impact (TA0040)
+    impact: 'Service degradation through throttling, application errors for legitimate users, potential
+      revenue loss during outage.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 3
+    rationale: Keyword-based classification from check dynamodb_table_autoscaling
+  threat_actors:
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - DynamoDB Capacity Exhaustion DoS
+    mitre_tactics: *id001
+    impact: 'Service degradation through throttling, application errors for legitimate users, potential
+      revenue loss during outage.
+
+      '
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - DynamoDB Capacity Exhaustion DoS
+    mitre_tactics: *id002
+    impact: 'Service degradation through throttling, application errors for legitimate users, potential
+      revenue loss during outage.
+
+      '
 - check_id: dynamodb_table_deletion_protection
   title: DynamoDB Table Deletion Protection
   description: Ensure DynamoDB table has deletion protection enabled
@@ -142,12 +248,53 @@
     - 2.12.1
   attack_scenarios:
   - technique: DynamoDB Table Destruction
-    description: >
-      An attacker with IAM permissions deletes a DynamoDB table with a
-      single API call. Without deletion protection, critical data is
-      immediately and irrecoverably lost, causing severe business disruption.
-    mitre_tactic: "Impact (TA0040)"
-    impact: >
-      Permanent data loss, extended recovery time, business continuity
-      failure for applications depending on the table.
+    description: 'An attacker with IAM permissions deletes a DynamoDB table with a single API call. Without
+      deletion protection, critical data is immediately and irrecoverably lost, causing severe business
+      disruption.
+
+      '
+    mitre_tactic: Impact (TA0040)
+    impact: 'Permanent data loss, extended recovery time, business continuity failure for applications
+      depending on the table.
+
+      '
     threat_source: ADVERSARIAL
+  cia_impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 5
+    rationale: Keyword-based classification from check dynamodb_table_deletion_protection
+  threat_actors:
+  - actor_name: Accidental User
+    actor_type: ACCIDENTAL
+    capability: Low
+    motivation: Human error, misconfiguration
+    techniques:
+    - DynamoDB Table Destruction
+    mitre_tactics: []
+    impact: 'Permanent data loss, extended recovery time, business continuity failure for applications
+      depending on the table.
+
+      '
+  - actor_name: Malicious Insider
+    actor_type: ADVERSARIAL
+    capability: High
+    motivation: Espionage, sabotage, disgruntlement
+    techniques:
+    - DynamoDB Table Destruction
+    mitre_tactics: *id002
+    impact: 'Permanent data loss, extended recovery time, business continuity failure for applications
+      depending on the table.
+
+      '
+  - actor_name: External Attacker
+    actor_type: ADVERSARIAL
+    capability: Medium
+    motivation: Financial gain, data theft, lateral movement
+    techniques:
+    - DynamoDB Table Destruction
+    mitre_tactics: *id001
+    impact: 'Permanent data loss, extended recovery time, business continuity failure for applications
+      depending on the table.
+
+      '

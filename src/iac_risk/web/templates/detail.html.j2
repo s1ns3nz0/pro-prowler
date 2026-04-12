@@ -429,6 +429,13 @@ function buildLeftPanel(res, address, prefix) {
     lhtml += '<strong style="color:var(--high);font-size:.85rem">&#9889; Attack Path</strong>';
     lhtml += '<p style="font-size:.85rem;margin-top:4px">' + esc(res.attack_path.attack_narrative) + '</p>';
     if (res.attack_path.risk_summary) lhtml += '<p style="font-size:.8rem;color:var(--muted);margin-top:4px;font-style:italic">' + esc(res.attack_path.risk_summary) + '</p>';
+    // Resource-level threat actors
+    if (res.attack_path.threat_actors && res.attack_path.threat_actors.length > 0) {
+      lhtml += '<div style="margin-top:8px;font-size:.75rem;text-transform:uppercase;color:var(--muted);letter-spacing:.05em">Threat Actors Targeting This Resource</div>';
+      res.attack_path.threat_actors.forEach(function(ta) {
+        lhtml += buildThreatActorCard(ta);
+      });
+    }
     lhtml += '</div>';
   }
 
@@ -446,12 +453,23 @@ function buildLeftPanel(res, address, prefix) {
         lhtml += '<div style="font-size:.85rem;padding:6px 8px;background:var(--surface);border-radius:4px;margin-top:4px">';
         lhtml += '<span style="color:var(--pass)">&#10148;</span> ' + esc(f.remediation) + '</div>';
       }
+      // CIA Impact bar
+      if (f.cia_impact) {
+        lhtml += buildCIABar(f.cia_impact);
+      }
       if (f.compliance_controls && f.compliance_controls.length > 0) {
         lhtml += '<div style="margin-top:4px">';
         f.compliance_controls.forEach(function(c) { lhtml += '<span class="tag" style="background:rgba(59,130,246,.1);color:var(--info)">' + esc(c) + '</span> '; });
         lhtml += '</div>';
       }
-      if (f.attack_scenarios && f.attack_scenarios.length > 0) {
+      // Threat Actor cards
+      if (f.threat_actors && f.threat_actors.length > 0) {
+        lhtml += '<div style="margin-top:8px;font-size:.75rem;text-transform:uppercase;color:var(--muted);letter-spacing:.05em">Threat Actors</div>';
+        f.threat_actors.forEach(function(ta) {
+          lhtml += buildThreatActorCard(ta);
+        });
+      } else if (f.attack_scenarios && f.attack_scenarios.length > 0) {
+        // Legacy fallback
         f.attack_scenarios.forEach(function(s) {
           lhtml += '<div style="font-size:.85rem;padding:6px 8px;margin-top:4px;border-left:2px solid var(--fail);background:rgba(220,38,38,.03)">';
           lhtml += '<strong>' + esc(s.technique) + '</strong> <span style="color:var(--muted)">' + esc(s.mitre_tactic || '') + '</span>';
@@ -716,6 +734,83 @@ function renderConfigFixed(obj, fixedFields, depth) {
 }
 
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// CIA triad visualization
+function buildCIABar(cia) {
+  if (!cia) return '';
+  var labels = {VERY_LOW:'VERY LOW', LOW:'LOW', MODERATE:'MODERATE', HIGH:'HIGH', VERY_HIGH:'VERY HIGH'};
+  var levelNum = {VERY_LOW:1, LOW:2, MODERATE:3, HIGH:4, VERY_HIGH:5};
+  var levelColor = {1:'#64748b', 2:'#22c55e', 3:'#facc15', 4:'#f97316', 5:'#ef4444'};
+  function toName(v) {
+    if (typeof v === 'number') return ['','VERY_LOW','LOW','MODERATE','HIGH','VERY_HIGH'][v] || 'LOW';
+    return v;
+  }
+  var c = toName(cia.confidentiality);
+  var i = toName(cia.integrity);
+  var a = toName(cia.availability);
+  function bar(label, value) {
+    var n = levelNum[value] || 1;
+    var color = levelColor[n];
+    var filled = '█'.repeat(n);
+    var empty = '░'.repeat(5 - n);
+    return '<div style="display:flex;align-items:center;gap:8px;font-size:.75rem;font-family:monospace;margin:2px 0">' +
+      '<span style="width:80px;color:var(--muted)">' + label + '</span>' +
+      '<span style="color:' + color + '">' + filled + '</span>' +
+      '<span style="color:var(--border)">' + empty + '</span>' +
+      '<span style="margin-left:4px;font-size:.7rem;color:var(--muted)">' + (labels[value] || value) + '</span>' +
+    '</div>';
+  }
+  return '<div style="margin-top:6px;padding:6px 8px;background:var(--surface);border-radius:4px">' +
+    '<div style="font-size:.7rem;text-transform:uppercase;color:var(--muted);margin-bottom:2px;letter-spacing:.05em">CIA Impact</div>' +
+    bar('Confiden.', c) + bar('Integrity', i) + bar('Availab.', a) +
+  '</div>';
+}
+
+// Threat actor card
+function buildThreatActorCard(ta) {
+  if (!ta) return '';
+  var actorColors = {
+    'External Attacker': '#ef4444',
+    'Malicious Insider': '#f97316',
+    'Compromised Credentials': '#eab308',
+    'Accidental User': '#64748b',
+    'Supply Chain Attacker': '#a855f7'
+  };
+  var borderColor = actorColors[ta.actor_name] || '#ef4444';
+  var typeBadge = ta.actor_type || 'ADVERSARIAL';
+  var html = '<div style="margin-top:6px;padding:8px 10px;border-left:3px solid ' + borderColor + ';background:rgba(255,255,255,.02);border-radius:0 4px 4px 0">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
+  html += '<strong style="font-size:.85rem;color:' + borderColor + '">' + esc(ta.actor_name) + '</strong>';
+  html += '<span style="font-size:.65rem;padding:2px 6px;background:rgba(255,255,255,.05);border-radius:3px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">' + esc(typeBadge) + '</span>';
+  html += '</div>';
+  if (ta.capability || ta.motivation) {
+    html += '<div style="font-size:.75rem;color:var(--muted);margin-bottom:4px">';
+    if (ta.capability) html += '<strong>Capability:</strong> ' + esc(ta.capability);
+    if (ta.capability && ta.motivation) html += ' &middot; ';
+    if (ta.motivation) html += '<strong>Motivation:</strong> ' + esc(ta.motivation);
+    html += '</div>';
+  }
+  if (ta.techniques && ta.techniques.length > 0) {
+    html += '<div style="font-size:.75rem;margin-top:4px"><strong style="color:var(--muted)">Techniques:</strong>';
+    html += '<ul style="margin:2px 0 0 16px;padding:0">';
+    ta.techniques.forEach(function(t) {
+      html += '<li style="font-size:.75rem;color:var(--text);margin:1px 0">' + esc(t) + '</li>';
+    });
+    html += '</ul></div>';
+  }
+  if (ta.mitre_tactics && ta.mitre_tactics.length > 0) {
+    html += '<div style="margin-top:4px">';
+    ta.mitre_tactics.forEach(function(t) {
+      html += '<span class="tag" style="font-size:.65rem;background:rgba(168,85,247,.1);color:#a855f7;margin-right:4px">' + esc(t) + '</span>';
+    });
+    html += '</div>';
+  }
+  if (ta.impact) {
+    html += '<div style="font-size:.75rem;color:var(--muted);margin-top:4px;font-style:italic">Impact: ' + esc(ta.impact) + '</div>';
+  }
+  html += '</div>';
+  return html;
+}
 
 function toggleCritEdit(editId) {
   var display = document.getElementById('crit-display-' + editId);
